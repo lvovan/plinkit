@@ -1,0 +1,47 @@
+{
+  "name": "plinkit",
+  "version": "1.0.0",
+  "description": "A fun competitive local couch-play Plinko game",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:e2e": "playwright test",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/ tests/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lvovan/plinkit.git"
+  },
+  "keywords": [
+    "plinko",
+    "game",
+    "physics",
+    "multiplayer"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/lvovan/plinkit/issues"
+  },
+  "homepage": "https://github.com/lvovan/plinkit#readme",
+  "dependencies": {
+    "planck": "^1.4.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^25.3.0",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
+    "eslint": "^10.0.2",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
+    "vitest": "^4.0.18"
+  }
+}

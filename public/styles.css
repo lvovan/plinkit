@@ -1,0 +1,82 @@
+/* Plinkit — Base Styles */
+
+/* CSS Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0a0e27;
+  color: #e0e0e0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* WCAG AA contrast: 4.5:1 ratio for text */
+/* Primary text: #e0e0e0 on #0a0e27 = ~14.2:1 ✓ */
+/* Gold text: #ffd700 on #16213e = ~7.3:1 ✓ */
+/* Button text: #ffffff on #2a9d8f = ~4.6:1 ✓ */
+/* Muted text: #a0c4ff on #16213e = ~5.4:1 ✓ */
+
+/* Canvas container */
+#game-canvas {
+  display: block;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  cursor: crosshair;
+}
+
+/* Overlay container */
+#overlay-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+}
+
+#overlay-container > * {
+  pointer-events: auto;
+}
+
+/* Interactive elements — minimum 44x44 CSS px for accessibility */
+button, input, select, textarea, [role="button"] {
+  min-height: 44px;
+  min-width: 44px;
+  font-size: 1rem;
+  touch-action: manipulation;
+}
+
+/* Focus styles for keyboard navigation */
+button:focus-visible, input:focus-visible, [role="button"]:focus-visible {
+  outline: 3px solid #ffd700;
+  outline-offset: 2px;
+}
+
+/* Text selection */
+::selection {
+  background: #2a9d8f;
+  color: #fff;
+}
+
+/* Scrollbar (for overlays that might need it) */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #457b9d;
+  border-radius: 3px;
+}

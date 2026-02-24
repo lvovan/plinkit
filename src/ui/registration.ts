@@ -1,0 +1,134 @@
+import type { PlayerRegistration } from '@/types/contracts';
+import { PUCK_PALETTE } from '@/types/index';
+
+/**
+ * Registration screen overlay.
+ * Shown during the registration phase to collect player names.
+ */
+export class RegistrationOverlay {
+  private container: HTMLElement;
+  private overlay: HTMLElement | null = null;
+
+  constructor(container: HTMLElement) {
+    this.container = container;
+  }
+
+  /**
+   * Show the registration form and return a promise that resolves
+   * with the player registrations when the user clicks Start.
+   */
+  show(maxPlayers: number): Promise<PlayerRegistration[]> {
+    return new Promise((resolve) => {
+      this.overlay = document.createElement('div');
+      this.overlay.className = 'registration-overlay';
+      this.overlay.innerHTML = `
+        <div class="reg-panel">
+          <h1>🎯 Plinkit!</h1>
+          <h2>Player Registration</h2>
+          <div class="player-inputs"></div>
+          <div class="reg-controls">
+            <button class="btn add-player-btn" type="button">+ Add Player</button>
+            <button class="btn start-btn" type="button" disabled>Start Game</button>
+          </div>
+        </div>
+      `;
+
+      this.applyStyles(this.overlay);
+
+      const inputsDiv = this.overlay.querySelector('.player-inputs')!;
+      const addBtn = this.overlay.querySelector('.add-player-btn') as HTMLButtonElement;
+      const startBtn = this.overlay.querySelector('.start-btn') as HTMLButtonElement;
+
+      // Start with 2 player inputs
+      let playerCount = 0;
+      const addInput = () => {
+        if (playerCount >= maxPlayers) return;
+        playerCount++;
+        const idx = playerCount - 1;
+        const row = document.createElement('div');
+        row.className = 'player-row';
+        row.innerHTML = `
+          <span class="puck-preview" style="background:${PUCK_PALETTE[idx].color}"></span>
+          <input type="text" class="player-name" placeholder="Player ${playerCount}" maxlength="16" data-index="${idx}" />
+        `;
+        inputsDiv.appendChild(row);
+
+        if (playerCount >= maxPlayers) {
+          addBtn.style.display = 'none';
+        }
+        updateStartBtn();
+      };
+
+      const updateStartBtn = () => {
+        const inputs = this.overlay!.querySelectorAll('.player-name') as NodeListOf<HTMLInputElement>;
+        const filledCount = Array.from(inputs).filter(i => i.value.trim().length > 0).length;
+        startBtn.disabled = filledCount < 2;
+      };
+
+      // Add 2 initial inputs
+      addInput();
+      addInput();
+
+      // Event listeners
+      addBtn.addEventListener('click', addInput);
+      inputsDiv.addEventListener('input', updateStartBtn);
+
+      startBtn.addEventListener('click', () => {
+        const inputs = this.overlay!.querySelectorAll('.player-name') as NodeListOf<HTMLInputElement>;
+        const registrations: PlayerRegistration[] = [];
+
+        inputs.forEach((input, i) => {
+          const name = input.value.trim();
+          if (name.length > 0) {
+            registrations.push({
+              name,
+              puckStyle: PUCK_PALETTE[i],
+            });
+          }
+        });
+
+        if (registrations.length >= 2) {
+          this.hide();
+          resolve(registrations);
+        }
+      });
+
+      this.container.appendChild(this.overlay);
+    });
+  }
+
+  hide(): void {
+    if (this.overlay) {
+      this.overlay.remove();
+      this.overlay = null;
+    }
+  }
+
+  private applyStyles(el: HTMLElement): void {
+    el.style.cssText = `
+      position: absolute; inset: 0; display: flex; align-items: center;
+      justify-content: center; background: rgba(0,0,0,0.85); z-index: 100;
+      pointer-events: auto;
+    `;
+
+    const style = document.createElement('style');
+    style.textContent = `
+      .reg-panel { background: #16213e; padding: 2rem; border-radius: 12px;
+        max-width: 400px; width: 90%; text-align: center; }
+      .reg-panel h1 { font-size: 2rem; margin-bottom: 0.25rem; }
+      .reg-panel h2 { font-size: 1rem; color: #aaa; margin-bottom: 1.5rem; }
+      .player-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+      .puck-preview { width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0; }
+      .player-name { flex: 1; padding: 0.6rem 0.8rem; border: 1px solid #333;
+        border-radius: 6px; background: #0f3460; color: #fff; font-size: 1rem;
+        min-height: 44px; }
+      .reg-controls { display: flex; gap: 0.75rem; margin-top: 1rem; justify-content: center; }
+      .btn { padding: 0.6rem 1.2rem; border: none; border-radius: 6px;
+        font-size: 1rem; cursor: pointer; min-height: 44px; min-width: 44px; }
+      .add-player-btn { background: #333; color: #ccc; }
+      .start-btn { background: #e63946; color: #fff; font-weight: bold; }
+      .start-btn:disabled { opacity: 0.4; cursor: default; }
+    `;
+    el.appendChild(style);
+  }
+}
