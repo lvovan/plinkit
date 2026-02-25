@@ -195,7 +195,7 @@ export class CanvasRenderer implements Renderer {
       ctx.beginPath();
       ctx.arc(ghostPos.x, ghostPos.y, ghostR, 0, Math.PI * 2);
       ctx.fill();
-      this.drawPuckPattern(ctx, ghostPos.x, ghostPos.y, ghostR, state.dropIndicator.style.pattern);
+      this.drawPuckPattern(ctx, ghostPos.x, ghostPos.y, ghostR, state.dropIndicator.style.pattern, 0);
       ctx.strokeStyle = '#ffffff88';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
@@ -216,7 +216,7 @@ export class CanvasRenderer implements Renderer {
       ctx.fill();
 
       // Pattern overlay
-      this.drawPuckPattern(ctx, pos.x, pos.y, r, puck.style.pattern);
+      this.drawPuckPattern(ctx, pos.x, pos.y, r, puck.style.pattern, puck.angle);
 
       // Outline
       ctx.strokeStyle = '#ffffff88';
@@ -293,12 +293,17 @@ export class CanvasRenderer implements Renderer {
     cy: number,
     r: number,
     pattern: string,
+    angle: number = 0,
   ): void {
     ctx.save();
     // Clip to circle
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.clip();
+
+    // Apply rotation transform around puck center
+    ctx.translate(cx, cy);
+    ctx.rotate(angle);
 
     ctx.strokeStyle = '#ffffff44';
     ctx.lineWidth = 1;
@@ -307,8 +312,8 @@ export class CanvasRenderer implements Renderer {
       case 'stripes':
         for (let dx = -r; dx <= r; dx += r * 0.4) {
           ctx.beginPath();
-          ctx.moveTo(cx + dx, cy - r);
-          ctx.lineTo(cx + dx, cy + r);
+          ctx.moveTo(dx, -r);
+          ctx.lineTo(dx, r);
           ctx.stroke();
         }
         break;
@@ -317,7 +322,7 @@ export class CanvasRenderer implements Renderer {
           for (let dy = -r * 0.5; dy <= r * 0.5; dy += r * 0.5) {
             ctx.fillStyle = '#ffffff33';
             ctx.beginPath();
-            ctx.arc(cx + dx, cy + dy, r * 0.12, 0, Math.PI * 2);
+            ctx.arc(dx, dy, r * 0.12, 0, Math.PI * 2);
             ctx.fill();
           }
         }
@@ -326,10 +331,10 @@ export class CanvasRenderer implements Renderer {
         ctx.strokeStyle = '#ffffff33';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(cx, cy, r * 0.6, 0, Math.PI * 2);
+        ctx.arc(0, 0, r * 0.6, 0, Math.PI * 2);
         ctx.stroke();
         ctx.beginPath();
-        ctx.arc(cx, cy, r * 0.3, 0, Math.PI * 2);
+        ctx.arc(0, 0, r * 0.3, 0, Math.PI * 2);
         ctx.stroke();
         break;
       // 'solid' — no overlay

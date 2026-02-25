@@ -19,11 +19,11 @@
 
 **Purpose**: Extend interfaces and config defaults so all downstream code compiles
 
-- [ ] T001 [P] Add `angularDamping` and `maxAngularVelocity` fields to `PhysicsConfig` interface in `src/types/index.ts`
-- [ ] T002 [P] Add `shoveOffsetFraction` field to `ShoveConfig` interface in `src/types/index.ts`
-- [ ] T003 [P] Add `angle: number` field to `RenderState.pucks[]` in `src/types/contracts.ts`
-- [ ] T004 Update `DEFAULT_PHYSICS_CONFIG` in `src/config/game-config.ts`: set `puckFriction: 0.4`, `pinFriction: 0.3`, add `angularDamping: 3.0`, `maxAngularVelocity: 12.57`
-- [ ] T005 Add `shoveOffsetFraction: 0.25` to `DEFAULT_SHOVE_CONFIG` in `src/config/game-config.ts`
+- [X] T001 [P] Add `angularDamping` and `maxAngularVelocity` fields to `PhysicsConfig` interface in `src/types/index.ts`
+- [X] T002 [P] Add `shoveOffsetFraction` field to `ShoveConfig` interface in `src/types/index.ts`
+- [X] T003 [P] Add `angle: number` field to `RenderState.pucks[]` in `src/types/contracts.ts`
+- [X] T004 Update `DEFAULT_PHYSICS_CONFIG` in `src/config/game-config.ts`: set `puckFriction: 0.4`, `pinFriction: 0.3`, add `angularDamping: 3.0`, `maxAngularVelocity: 12.57`
+- [X] T005 Add `shoveOffsetFraction: 0.25` to `DEFAULT_SHOVE_CONFIG` in `src/config/game-config.ts`
 
 ---
 
@@ -33,7 +33,7 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T006 Pass `angle: p.angle` in the snapshot-to-RenderState mapping in `src/main.ts` (line ~339)
+- [X] T006 Pass `angle: p.angle` in the snapshot-to-RenderState mapping in `src/main.ts` (line ~339)
 
 **Checkpoint**: Types compile, angle flows from physics snapshot to render state. All existing tests still pass.
 
@@ -49,18 +49,18 @@
 
 > **Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T007 [P] [US1] Add rotation test: puck created with `fixedRotation: false` in `tests/unit/physics/simulation.test.ts`
-- [ ] T008 [P] [US1] Add rotation test: puck hitting left side of pin gains positive angular velocity in `tests/unit/physics/simulation.test.ts`
-- [ ] T009 [P] [US1] Add rotation test: puck hitting right side of pin gains negative angular velocity in `tests/unit/physics/simulation.test.ts`
-- [ ] T010 [P] [US1] Add damping test: spinning puck's angular velocity decays toward zero over ~60 steps in `tests/unit/physics/simulation.test.ts`
-- [ ] T011 [P] [US1] Add angular velocity cap test: puck angular velocity never exceeds `maxAngularVelocity` after step in `tests/unit/physics/simulation.test.ts`
-- [ ] T012 [P] [US1] Add determinism test: same drop position produces same final angle across 10 runs in `tests/unit/physics/determinism.test.ts`
+- [X] T007 [P] [US1] Add rotation test: puck created with `fixedRotation: false` in `tests/unit/physics/simulation.test.ts`
+- [X] T008 [P] [US1] Add rotation test: puck hitting left side of pin gains positive angular velocity in `tests/unit/physics/simulation.test.ts`
+- [X] T009 [P] [US1] Add rotation test: puck hitting right side of pin gains negative angular velocity in `tests/unit/physics/simulation.test.ts`
+- [X] T010 [P] [US1] Add damping test: spinning puck's angular velocity decays toward zero over ~60 steps in `tests/unit/physics/simulation.test.ts`
+- [X] T011 [P] [US1] Add angular velocity cap test: puck angular velocity never exceeds `maxAngularVelocity` after step in `tests/unit/physics/simulation.test.ts`
+- [X] T012 [P] [US1] Add determinism test: same drop position produces same final angle across 10 runs in `tests/unit/physics/determinism.test.ts`
 
 ### Implementation for User Story 1
 
-- [ ] T013 [US1] Change `fixedRotation: true` to `false` and add `angularDamping` from config in puck body creation in `src/physics/simulation.ts` (line ~62)
-- [ ] T014 [US1] Add angular velocity clamping loop after `world.step()` in `src/physics/simulation.ts` `step()` method
-- [ ] T015 [US1] Verify all T007–T012 tests pass after implementation
+- [X] T013 [US1] Change `fixedRotation: true` to `false` and add `angularDamping` from config in puck body creation in `src/physics/simulation.ts` (line ~62)
+- [X] T014 [US1] Add angular velocity clamping loop after `world.step()` in `src/physics/simulation.ts` `step()` method
+- [X] T015 [US1] Verify all T007–T012 tests pass after implementation
 
 **Checkpoint**: Pucks rotate on pin contact, spin decays, velocity is capped. Existing tests pass (SC-004).
 
@@ -76,14 +76,14 @@
 
 > **Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T016 [P] [US2] Add test: two colliding pucks exchange angular velocity in `tests/unit/physics/simulation.test.ts`
-- [ ] T017 [P] [US2] Add test: shove with `shoveOffsetFraction > 0` produces angular velocity on puck in `tests/unit/physics/shove.test.ts`
-- [ ] T018 [P] [US2] Add test: shove at center (`shoveOffsetFraction = 0`) produces zero angular velocity in `tests/unit/physics/shove.test.ts`
+- [X] T016 [P] [US2] Add test: two colliding pucks exchange angular velocity in `tests/unit/physics/simulation.test.ts`
+- [X] T017 [P] [US2] Add test: shove with `shoveOffsetFraction > 0` produces angular velocity on puck in `tests/unit/physics/shove.test.ts`
+- [X] T018 [P] [US2] Add test: shove at center (`shoveOffsetFraction = 0`) produces zero angular velocity in `tests/unit/physics/shove.test.ts`
 
 ### Implementation for User Story 2
 
-- [ ] T019 [US2] Modify `applyShove()` in `src/physics/simulation.ts` to apply impulse at off-center point using `shoveOffsetFraction` from config (line ~113)
-- [ ] T020 [US2] Verify all T016–T018 tests pass after implementation
+- [X] T019 [US2] Modify `applyShove()` in `src/physics/simulation.ts` to apply impulse at off-center point using `shoveOffsetFraction` from config (line ~113)
+- [X] T020 [US2] Verify all T016–T018 tests pass after implementation
 
 **Checkpoint**: Puck-puck spin transfer works via friction. Shoves add spin. Existing tests pass.
 
@@ -99,14 +99,14 @@
 
 > **Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T021 [P] [US3] Add test: `RenderState.pucks[].angle` is present and matches snapshot angle in `tests/integration/game-session.test.ts`
+- [X] T021 [P] [US3] Add test: `RenderState.pucks[].angle` is present and matches snapshot angle in `tests/integration/game-session.test.ts`
 
 ### Implementation for User Story 3
 
-- [ ] T022 [US3] Refactor `drawPuckPattern()` in `src/rendering/renderer.ts` to accept `angle` parameter and apply `ctx.translate(cx, cy) + ctx.rotate(angle)` transform before drawing patterns
-- [ ] T023 [US3] Update puck drawing loop in `drawFrame()` in `src/rendering/renderer.ts` to pass `puck.angle` to `drawPuckPattern()`
-- [ ] T024 [US3] Ensure ghost puck (dropIndicator) in `src/rendering/renderer.ts` renders with angle hardcoded to `0`
-- [ ] T025 [US3] Verify T021 test passes and manual visual test with "stripes" pattern shows rotation
+- [X] T022 [US3] Refactor `drawPuckPattern()` in `src/rendering/renderer.ts` to accept `angle` parameter and apply `ctx.translate(cx, cy) + ctx.rotate(angle)` transform before drawing patterns
+- [X] T023 [US3] Update puck drawing loop in `drawFrame()` in `src/rendering/renderer.ts` to pass `puck.angle` to `drawPuckPattern()`
+- [X] T024 [US3] Ensure ghost puck (dropIndicator) in `src/rendering/renderer.ts` renders with angle hardcoded to `0`
+- [X] T025 [US3] Verify T021 test passes and manual visual test with "stripes" pattern shows rotation
 
 **Checkpoint**: All three user stories complete. Patterns visually rotate. Ghost puck stays fixed.
 
@@ -116,10 +116,10 @@
 
 **Purpose**: Regression validation, determinism, and cleanup
 
-- [ ] T026 Run full test suite (`npm run test`) and verify all existing + new tests pass (SC-004)
-- [ ] T027 Run determinism verification: same inputs → same final angle across 10 runs (SC-005)
-- [ ] T028 Run `npm run typecheck` and `npm run lint` — fix any errors
-- [ ] T029 Run quickstart.md manual testing scenario to validate visual rotation behavior
+- [X] T026 Run full test suite (`npm run test`) and verify all existing + new tests pass (SC-004)
+- [X] T027 Run determinism verification: same inputs → same final angle across 10 runs (SC-005)
+- [X] T028 Run `npm run typecheck` and `npm run lint` — fix any errors
+- [X] T029 Run quickstart.md manual testing scenario to validate visual rotation behavior
 
 ---
 

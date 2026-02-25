@@ -64,7 +64,8 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
     const body = this.board.world.createBody({
       type: 'dynamic',
       position: planck.Vec2(clampedX, dropY),
-      fixedRotation: true, // saves solver work for circles
+      fixedRotation: false,
+      angularDamping: physicsConfig.angularDamping,
       bullet: false,
     });
 
@@ -113,11 +114,26 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
       dy *= scale;
     }
 
-    // Apply impulse at body center
-    puck.body.applyLinearImpulse(
-      planck.Vec2(dx, dy),
-      puck.body.getWorldCenter(),
-    );
+    // Apply impulse at off-center point for spin
+    const center = puck.body.getWorldCenter();
+    const puckRadius = this.config.boardLayout.puckRadius;
+    const offsetFraction = this.config.shoveConfig.shoveOffsetFraction;
+
+    if (mag > 0 && offsetFraction > 0) {
+      const offset = puckRadius * offsetFraction;
+      // Perpendicular to impulse direction (to the "right")
+      const perpX = (-dy / mag) * offset;
+      const perpY = (dx / mag) * offset;
+      puck.body.applyLinearImpulse(
+        planck.Vec2(dx, dy),
+        planck.Vec2(center.x + perpX, center.y + perpY),
+      );
+    } else {
+      puck.body.applyLinearImpulse(
+        planck.Vec2(dx, dy),
+        center,
+      );
+    }
 
     return true;
   }
@@ -131,8 +147,16 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
     this.pendingCollisions = [];
 
     // Step the world
-    const { fixedTimestep, velocityIterations, positionIterations } = this.config.physics;
+    const { fixedTimestep, velocityIterations, positionIterations, maxAngularVelocity } = this.config.physics;
     this.board.world.step(fixedTimestep, velocityIterations, positionIterations);
+
+    // Clamp angular velocity for all pucks
+    for (const puck of this.board.pucks) {
+      const w = puck.body.getAngularVelocity();
+      if (Math.abs(w) > maxAngularVelocity) {
+        puck.body.setAngularVelocity(Math.sign(w) * maxAngularVelocity);
+      }
+    }
 
     // Check for settled pucks
     const settledPucks: SettledPuckEvent[] = [];

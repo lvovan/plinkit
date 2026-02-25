@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { PhysicsSimulationImpl } from '@/physics/simulation';
-import { DEFAULT_GAME_CONFIG } from '@/config/game-config';
+import { DEFAULT_GAME_CONFIG, createGameConfig } from '@/config/game-config';
 
 describe('Shove Application', () => {
   let sim: PhysicsSimulationImpl;
@@ -96,5 +96,59 @@ describe('Shove Application', () => {
 
     const applied = sim.applyShove(puckId, { dx: 1, dy: 0, appliedAtTick: 0 });
     expect(applied).toBe(false);
+  });
+
+  describe('Off-center Shove Spin (US2)', () => {
+    it('T017: shove with shoveOffsetFraction > 0 produces angular velocity', () => {
+      const puckId = sim.dropPuck(0, 'player1');
+      // Step a few times so puck is in play
+      for (let i = 0; i < 5; i++) sim.step();
+
+      // Record angle before shove
+      const angleBefore = sim.getSnapshot().pucks[0].angle;
+
+      sim.applyShove(puckId, { dx: 3, dy: 0, appliedAtTick: 5 });
+
+      // Step several times after shove
+      for (let i = 0; i < 30; i++) sim.step();
+
+      // Angle should have changed due to off-center impulse
+      const angleAfter = sim.getSnapshot().pucks[0].angle;
+      expect(Math.abs(angleAfter - angleBefore)).toBeGreaterThan(0.01);
+    });
+
+    it('T018: shove at center (shoveOffsetFraction = 0) produces zero angular velocity from shove', () => {
+      const sim2 = new PhysicsSimulationImpl();
+      const config = createGameConfig({
+        shoveConfig: {
+          ...DEFAULT_GAME_CONFIG.shoveConfig,
+          shoveOffsetFraction: 0,
+        },
+        physics: {
+          ...DEFAULT_GAME_CONFIG.physics,
+          angularDamping: 0, // No damping so we can measure precisely
+          puckFriction: 0,   // No friction spin from pin contacts
+          pinFriction: 0,
+        },
+      });
+      sim2.createWorld(config);
+      const puckId = sim2.dropPuck(0, 'player1');
+
+      // Step a few times (no friction → no rotation from pins)
+      for (let i = 0; i < 5; i++) sim2.step();
+
+      // Record angle before shove
+      const angleBefore = sim2.getSnapshot().pucks[0].angle;
+
+      sim2.applyShove(puckId, { dx: 3, dy: 0, appliedAtTick: 5 });
+
+      // Step after shove
+      for (let i = 0; i < 30; i++) sim2.step();
+
+      // With zero offset and zero friction, angle should not change from shove
+      const angleAfter = sim2.getSnapshot().pucks[0].angle;
+      expect(Math.abs(angleAfter - angleBefore)).toBeLessThan(0.01);
+      sim2.destroy();
+    });
   });
 });

@@ -5,6 +5,7 @@ import { PUCK_PALETTE } from '@/types/index';
 import type { PlayerRegistration, TurnResult } from '@/types/contracts';
 import type { ScoreBreakdown } from '@/types/index';
 import { DEFAULT_GAME_CONFIG } from '@/config/game-config';
+import { PhysicsSimulationImpl } from '@/physics/simulation';
 
 function makePlayers(n: number): PlayerRegistration[] {
   return Array.from({ length: n }, (_, i) => ({
@@ -179,5 +180,25 @@ describe('Full Game Session Integration', () => {
     if (action.type === 'winner') {
       expect(action.winner.name).toBe('Player 2');
     }
+  });
+
+  it('T021: RenderState pucks include angle field matching snapshot', () => {
+    // This integration test verifies the angle pipeline:
+    // PhysicsSnapshot.pucks[].angle → RenderState.pucks[].angle
+    const sim = new PhysicsSimulationImpl();
+    sim.createWorld(DEFAULT_GAME_CONFIG);
+
+    sim.dropPuck(-1.5, 'player1');
+    // Step enough to generate rotation
+    for (let i = 0; i < 100; i++) sim.step();
+
+    const snapshot = sim.getSnapshot();
+    expect(snapshot.pucks.length).toBe(1);
+    expect(snapshot.pucks[0].angle).toBeDefined();
+    expect(typeof snapshot.pucks[0].angle).toBe('number');
+    // With rotation enabled and off-center drop, angle should be non-zero
+    expect(snapshot.pucks[0].angle).not.toBe(0);
+
+    sim.destroy();
   });
 });

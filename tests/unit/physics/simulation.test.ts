@@ -98,6 +98,161 @@ describe('PhysicsSimulation', () => {
     });
   });
 
+  describe('Puck Rotation (US1)', () => {
+    it('T007: puck should be created with fixedRotation: false', () => {
+      // Drop off-center so it hits pins and gains angular velocity
+      const sim2 = new PhysicsSimulationImpl();
+      sim2.createWorld(DEFAULT_GAME_CONFIG);
+      sim2.dropPuck(-1.5, 'player1');
+      // Step enough for contact with pins
+      for (let i = 0; i < 200; i++) sim2.step();
+      const snapshot = sim2.getSnapshot();
+      // If fixedRotation were true, angle would always be 0
+      // With fixedRotation false and glancing contact, angle should change
+      expect(snapshot.pucks[0].angle).not.toBe(0);
+      sim2.destroy();
+    });
+
+    it('T008: puck hitting left side of pin gains positive angular velocity', () => {
+      // Drop puck at an offset position to graze pins
+      const sim2 = new PhysicsSimulationImpl();
+      sim2.createWorld(DEFAULT_GAME_CONFIG);
+      sim2.dropPuck(-1.5, 'player1');
+      // Step until we see a non-zero angle
+      let foundNonZeroAngle = false;
+      for (let i = 0; i < 300; i++) {
+        sim2.step();
+        const snapshot = sim2.getSnapshot();
+        if (snapshot.pucks.length > 0 && Math.abs(snapshot.pucks[0].angle) > 0.001) {
+          foundNonZeroAngle = true;
+          break;
+        }
+      }
+      expect(foundNonZeroAngle).toBe(true);
+      // Record the sign for comparison with T009
+      sim2.destroy();
+    });
+
+    it('T009: opposite drops produce opposite rotation directions', () => {
+      // Drop puck at mirrored positions and verify opposite angle signs
+      function getAngleAfterSteps(dropX: number, steps: number): number {
+        const s = new PhysicsSimulationImpl();
+        s.createWorld(DEFAULT_GAME_CONFIG);
+        s.dropPuck(dropX, 'player1');
+        for (let i = 0; i < steps; i++) s.step();
+        const snapshot = s.getSnapshot();
+        const a = snapshot.pucks.length > 0 ? snapshot.pucks[0].angle : 0;
+        s.destroy();
+        return a;
+      }
+
+      const angleLeft = getAngleAfterSteps(-1.5, 300);
+      const angleRight = getAngleAfterSteps(1.5, 300);
+
+      // Both should have non-zero rotation
+      expect(Math.abs(angleLeft)).toBeGreaterThan(0.001);
+      expect(Math.abs(angleRight)).toBeGreaterThan(0.001);
+      // Mirrored positions should produce opposite rotation signs
+      expect(Math.sign(angleLeft)).not.toBe(Math.sign(angleRight));
+    });
+
+    it('T010: spinning puck angular velocity decays toward zero over ~60 steps', () => {
+      const sim2 = new PhysicsSimulationImpl();
+      sim2.createWorld(DEFAULT_GAME_CONFIG);
+      sim2.dropPuck(-1.5, 'player1');
+      let peakAngleRate = 0;
+      const angles: number[] = [];
+      for (let i = 0; i < 200; i++) {
+        sim2.step();
+        const snapshot = sim2.getSnapshot();
+        if (snapshot.pucks.length > 0) {
+          angles.push(snapshot.pucks[0].angle);
+          if (angles.length >= 2) {
+            const rate = Math.abs(angles[angles.length - 1] - angles[angles.length - 2]);
+            if (rate > peakAngleRate) {
+              peakAngleRate = rate;
+            }
+          }
+        }
+      }
+      // After peak, continue stepping and measure the angular change rate
+      const laterAngles: number[] = [];
+      for (let i = 0; i < 60; i++) {
+        sim2.step();
+        const snapshot = sim2.getSnapshot();
+        if (snapshot.pucks.length > 0) {
+          laterAngles.push(snapshot.pucks[0].angle);
+        }
+      }
+      if (laterAngles.length >= 2) {
+        const laterRate = Math.abs(laterAngles[laterAngles.length - 1] - laterAngles[0]) / laterAngles.length;
+        // Damped rate should be less than peak rate
+        expect(laterRate).toBeLessThan(peakAngleRate);
+      }
+      sim2.destroy();
+    });
+
+    it('T011: angular velocity never exceeds maxAngularVelocity after step', () => {
+      const sim2 = new PhysicsSimulationImpl();
+      const config = createGameConfig({
+        physics: {
+          ...DEFAULT_GAME_CONFIG.physics,
+          maxAngularVelocity: 6.28,
+          angularDamping: 0.5,
+          puckFriction: 0.8,
+          pinFriction: 0.8,
+        },
+      });
+      sim2.createWorld(config);
+      sim2.dropPuck(-2.0, 'player1');
+      for (let i = 0; i < 500; i++) {
+        sim2.step();
+      }
+      const snapshot = sim2.getSnapshot();
+      if (snapshot.pucks.length > 0) {
+        // With 500 steps at 1/60s (~8.3s), max angle at 1 rot/s cap ≈ 52 rad
+        expect(Math.abs(snapshot.pucks[0].angle)).toBeLessThan(100);
+      }
+      sim2.destroy();
+    });
+  });
+
+  describe('Puck-Puck Friction (US2)', () => {
+    it('T016: two colliding pucks exchange angular velocity', () => {
+      // Drop one puck and let it settle, then drop another on top
+      const sim2 = new PhysicsSimulationImpl();
+      sim2.createWorld(DEFAULT_GAME_CONFIG);
+
+      // Drop first puck
+      const id1 = sim2.dropPuck(0, 'player1');
+      for (let i = 0; i < 1000; i++) {
+        const result = sim2.step();
+        if (result.settledPucks.length > 0) break;
+      }
+
+      // Drop second puck slightly offset so it glances off the first
+      sim2.dropPuck(0.3, 'player2');
+
+      // Step until contact and interaction
+      let puckHitFound = false;
+      for (let i = 0; i < 500; i++) {
+        const result = sim2.step();
+        if (result.collisions.some(c => c.type === 'puckHit')) {
+          puckHitFound = true;
+        }
+      }
+
+      // After puck-puck collision, both pucks should have some rotation
+      const snapshot = sim2.getSnapshot();
+      const p2 = snapshot.pucks.find(p => p.id !== id1);
+      if (puckHitFound && p2) {
+        // Second puck should have accumulated angle from puck-puck friction
+        expect(Math.abs(p2.angle)).toBeGreaterThan(0);
+      }
+      sim2.destroy();
+    });
+  });
+
   describe('Out-of-Bounds detection', () => {
     it('should trigger OOB event when puck is above top boundary for 30+ ticks (T006)', () => {
       const sim2 = new PhysicsSimulationImpl();

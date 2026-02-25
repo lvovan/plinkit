@@ -81,6 +81,8 @@ export interface RenderState {
     radius: number;
     style: PuckStyle;
     settled: boolean;
+    /** Rotation angle in radians from physics snapshot. */
+    angle: number;
   }>;
   buckets: Array<{ x: number; width: number; score: number }>;
   shoveZoneY: number;
