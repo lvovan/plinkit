@@ -13,8 +13,9 @@ export class OverlayManager implements UIOverlayManager {
   private scoreboard: ScoreboardOverlay;
   private turnIndicator: TurnIndicatorOverlay;
   private results: ResultsOverlay;
-  private shoveCounterEl: HTMLElement | null = null;
   private container: HTMLElement;
+  private sfxToggleBtn: HTMLButtonElement | null = null;
+  private musicToggleBtn: HTMLButtonElement | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -41,22 +42,8 @@ export class OverlayManager implements UIOverlayManager {
     this.turnIndicator.updateTimer(secondsRemaining);
   }
 
-  updateShoveCounter(remaining: number, total: number): void {
-    if (!this.shoveCounterEl) {
-      this.shoveCounterEl = document.createElement('div');
-      this.shoveCounterEl.style.cssText = `
-        position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
-        background: rgba(22, 33, 62, 0.9); padding: 6px 16px; border-radius: 8px;
-        pointer-events: none; z-index: 50; font-size: 0.85rem; color: #e0e0e0;
-      `;
-      this.container.appendChild(this.shoveCounterEl);
-    }
-    this.shoveCounterEl.textContent = `Shoves: ${remaining}/${total}`;
-  }
-
   async showResults(players: Player[], winner: Player | Player[], isTieBreaker = false): Promise<ResultsAction> {
     this.turnIndicator.hide();
-    this.hideShoveCounter();
     return this.results.show(players, winner, isTieBreaker);
   }
 
@@ -98,13 +85,37 @@ export class OverlayManager implements UIOverlayManager {
     this.scoreboard.hide();
     this.turnIndicator.hide();
     this.results.hide();
-    this.hideShoveCounter();
   }
 
-  private hideShoveCounter(): void {
-    if (this.shoveCounterEl) {
-      this.shoveCounterEl.remove();
-      this.shoveCounterEl = null;
+  initAudioToggles(onToggleSfx: () => void, onToggleMusic: () => void): void {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'audio-toggles';
+
+    this.sfxToggleBtn = document.createElement('button');
+    this.sfxToggleBtn.className = 'audio-toggle-btn sfx-toggle';
+    this.sfxToggleBtn.setAttribute('aria-label', 'Toggle sound effects');
+    this.sfxToggleBtn.textContent = '🔊';
+    this.sfxToggleBtn.addEventListener('click', onToggleSfx);
+
+    this.musicToggleBtn = document.createElement('button');
+    this.musicToggleBtn.className = 'audio-toggle-btn music-toggle';
+    this.musicToggleBtn.setAttribute('aria-label', 'Toggle music');
+    this.musicToggleBtn.textContent = '🎵';
+    this.musicToggleBtn.addEventListener('click', onToggleMusic);
+
+    wrapper.appendChild(this.sfxToggleBtn);
+    wrapper.appendChild(this.musicToggleBtn);
+    this.container.appendChild(wrapper);
+  }
+
+  updateAudioToggleState(sfxMuted: boolean, musicMuted: boolean): void {
+    if (this.sfxToggleBtn) {
+      this.sfxToggleBtn.textContent = sfxMuted ? '🔇' : '🔊';
+      this.sfxToggleBtn.classList.toggle('muted', sfxMuted);
+    }
+    if (this.musicToggleBtn) {
+      this.musicToggleBtn.textContent = musicMuted ? '🎵' : '🎵';
+      this.musicToggleBtn.classList.toggle('muted', musicMuted);
     }
   }
 }

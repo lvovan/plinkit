@@ -7,7 +7,7 @@ import { GameStateMachine } from '@/core/state-machine';
 import { OverlayManager } from '@/ui/overlay-manager';
 import { TurnTimer } from '@/core/turn-timer';
 import { GameAudioManager } from '@/audio/audio-manager';
-import { AUDIO_SPRITE_MAP, AUDIO_SPRITE_URL } from '@/audio/sprite-map';
+import { GameMusicManager } from '@/audio/music-manager';
 import { EffectsManager } from '@/rendering/effects';
 import { VisibilityHandler } from '@/core/visibility';
 import { DEFAULT_GAME_CONFIG } from '@/config/game-config';
@@ -59,6 +59,7 @@ const overlays = new OverlayManager(overlayContainer);
 
 // --- Audio ---
 const audioManager = new GameAudioManager();
+const musicManager = new GameMusicManager();
 
 // --- Effects ---
 const effects = new EffectsManager();
@@ -96,8 +97,7 @@ let dropX = 0;
 let activePuckId: string | null = null;
 let puckDropped = false;
 let currentPlayer: Player | null = null;
-let currentPuckStyle: PuckStyle = { color: '#E63946', pattern: 'solid', label: 'Red Solid' };
-let shovesUsed = 0;
+let currentPuckStyle: PuckStyle = { color: '#E63946', pattern: 'stripes', label: 'Red Stripes' };
 let shovesDisabled = false;
 let gameRunning = false;
 let bounceCount = 0;
@@ -142,7 +142,6 @@ const turnTimer = new TurnTimer(
       shovesDisabled = true; // no shoves allowed on timeout
       input.setFlickEnabled(false);
       audioManager.play('timeout');
-      overlays.updateShoveCounter(0, config.shoveConfig.maxShovesPerTurn);
     }
   },
 );
@@ -159,25 +158,23 @@ input.onRelease(() => {
     puckStyleMap.set(activePuckId, currentPuckStyle);
     puckDropped = true;
     input.setFlickEnabled(true);
-    shovesUsed = 0;
     shovesDisabled = false;
     audioManager.play('drop');
-    overlays.updateShoveCounter(
-      config.shoveConfig.maxShovesPerTurn,
-      config.shoveConfig.maxShovesPerTurn,
-    );
+    // Crossfade to gameplay music on first drop of the round
+    if (musicManager.getCurrentTrack() !== 'gameplay') {
+      musicManager.crossfadeTo('gameplay');
+    }
   }
 });
 
 input.onFlick((vector) => {
-  if (activePuckId && !shovesDisabled && shovesUsed < config.shoveConfig.maxShovesPerTurn) {
+  if (activePuckId && !shovesDisabled) {
     const applied = sim.applyShove(activePuckId, {
       dx: vector.dx,
       dy: vector.dy,
       appliedAtTick: 0,
     });
     if (applied) {
-      shovesUsed++;
       audioManager.play('shove');
 
       // Proportional shake: 5 × (forceMagnitude / maxForceMagnitude)
@@ -192,11 +189,6 @@ input.onFlick((vector) => {
         puckState.position.x, puckState.position.y,
         vector.dx / normLen, vector.dy / normLen,
         forceMag,
-      );
-
-      overlays.updateShoveCounter(
-        config.shoveConfig.maxShovesPerTurn - shovesUsed,
-        config.shoveConfig.maxShovesPerTurn,
       );
     }
   }
@@ -376,6 +368,8 @@ function startNextTurn(): void {
 }
 
 async function handleGameEnd(players: Player[], winner: Player | Player[], isTieBreaker: boolean): Promise<void> {
+  // Crossfade back to lobby music when showing results
+  musicManager.crossfadeTo('lobby');
   const action = await overlays.showResults(players, winner, isTieBreaker);
 
   if (action === 'playAgain') {
@@ -406,12 +400,29 @@ async function startGame(): Promise<void> {
 
   // Unlock audio after first user gesture (registration submit)
   audioManager.unlock().then(() => {
-    audioManager.load(AUDIO_SPRITE_URL, AUDIO_SPRITE_MAP).catch(() => {
-      // Audio loading is non-critical — game works without audio
-    });
+    audioManager.init();
+    // Initialize music manager with shared audio context + master gain bus
+    const ctx = audioManager.getContext();
+    const masterGain = audioManager.getMasterGain();
+    if (ctx && masterGain) {
+      musicManager.init(ctx, masterGain);
+      musicManager.startTrack('lobby');
+    }
   }).catch(() => {
     // Audio unlock is non-critical
   });
+
+  // Initialize audio toggle buttons
+  overlays.initAudioToggles(
+    () => {
+      audioManager.toggleMuteSfx();
+      overlays.updateAudioToggleState(audioManager.isSfxMuted(), musicManager.isMuted());
+    },
+    () => {
+      musicManager.toggleMute();
+      overlays.updateAudioToggleState(audioManager.isSfxMuted(), musicManager.isMuted());
+    },
+  );
 
   stateMachine.startSession(registrations, config);
 

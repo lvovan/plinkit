@@ -9,7 +9,7 @@ export type GamePhase = 'registration' | 'playing' | 'tieBreaker' | 'results' | 
 export type TurnPhase = 'aiming' | 'falling' | 'scored';
 
 /** Visual pattern overlays for pucks */
-export type PuckPattern = 'solid' | 'stripes' | 'dots' | 'rings';
+export type PuckPattern = 'stripes' | 'dots' | 'rings';
 
 // ---- PuckStyle ----
 
@@ -23,12 +23,12 @@ export interface PuckStyle {
   label: string;
 }
 
-/** Preset palette — 4 color-blind accessible combinations */
+/** Preset palette — 4 color-blind accessible combinations (round-robin: stripes→dots→rings) */
 export const PUCK_PALETTE: readonly PuckStyle[] = [
-  { color: '#E63946', pattern: 'solid', label: 'Red Solid' },
-  { color: '#457B9D', pattern: 'stripes', label: 'Blue Stripes' },
-  { color: '#2A9D8F', pattern: 'dots', label: 'Teal Dots' },
-  { color: '#E9C46A', pattern: 'rings', label: 'Gold Rings' },
+  { color: '#E63946', pattern: 'stripes', label: 'Red Stripes' },
+  { color: '#457B9D', pattern: 'dots', label: 'Blue Dots' },
+  { color: '#2A9D8F', pattern: 'rings', label: 'Teal Rings' },
+  { color: '#E9C46A', pattern: 'stripes', label: 'Gold Stripes' },
 ] as const;
 
 // ---- Player ----
@@ -74,7 +74,6 @@ export interface PhysicsConfig {
 }
 
 export interface ShoveConfig {
-  maxShovesPerTurn: number;
   maxForceMagnitude: number;
   minFlickSpeed: number;
   flickSampleWindowMs: number;

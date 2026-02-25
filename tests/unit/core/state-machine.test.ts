@@ -18,6 +18,8 @@ function makeTurnResult(bucketIndex: number, scoreEarned: number): TurnResult {
     bucketIndex,
     scoreEarned,
     wasTimeout: false,
+    bounceCount: 0,
+    scoreBreakdown: { baseScore: scoreEarned, bounceCount: 0, multiplier: 1, totalScore: scoreEarned },
   };
 }
 
@@ -51,7 +53,6 @@ describe('GameStateMachine', () => {
       expect(ctx.player.name).toBe('Player 1');
       expect(ctx.turnNumber).toBe(1);
       expect(ctx.roundNumber).toBe(1);
-      expect(ctx.shovesRemaining).toBe(DEFAULT_GAME_CONFIG.shoveConfig.maxShovesPerTurn);
     });
   });
 

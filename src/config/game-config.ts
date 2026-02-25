@@ -34,7 +34,6 @@ export const DEFAULT_PHYSICS_CONFIG: PhysicsConfig = {
 // ---- Shove Config ----
 
 export const DEFAULT_SHOVE_CONFIG: ShoveConfig = {
-  maxShovesPerTurn: 2,
   maxForceMagnitude: 5.0,     // max impulse magnitude in world units
   minFlickSpeed: 200,          // px/s minimum pointer velocity
   flickSampleWindowMs: 80,     // velocity sampling window

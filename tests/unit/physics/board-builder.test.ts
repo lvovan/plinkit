@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { BoardBuilder } from '@/physics/board-builder';
 import { DEFAULT_GAME_CONFIG } from '@/config/game-config';
-import { computePinPositions } from '@/config/board-geometry';
 
 describe('BoardBuilder', () => {
   let builder: BoardBuilder;

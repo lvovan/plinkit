@@ -59,7 +59,6 @@ export class GameStateMachine implements GameStateMachineContract {
       player,
       turnNumber: this.turnManager.getTurnNumber(),
       roundNumber: this.turnManager.getCurrentRound(),
-      shovesRemaining: this.config.shoveConfig.maxShovesPerTurn,
       timerSeconds: this.config.turnTimerSeconds,
     };
   }

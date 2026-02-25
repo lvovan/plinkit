@@ -17,33 +17,39 @@ function makeTurnResult(score: number): TurnResult {
     bucketIndex: 0,
     scoreEarned: score,
     wasTimeout: false,
+    bounceCount: 0,
+    scoreBreakdown: { baseScore: score, bounceCount: 0, multiplier: 1, totalScore: score },
   };
 }
 
 describe('Tie-Breaker Logic', () => {
+  const baseConfig = {
+    boardLayout: {
+      pinRows: 12, bucketCount: 9, pinSpacing: 1.0, pinRadius: 0.15, puckRadius: 0.25,
+      bucketScores: [100, 500, 1000, 5000, 10000, 5000, 1000, 500, 100],
+      boardWidth: 10.0, boardHeight: 14.0,
+    },
+    physics: {
+      gravity: { x: 0, y: -10 }, fixedTimestep: 1 / 60,
+      velocityIterations: 8, positionIterations: 3,
+      puckRestitution: 0.5, puckFriction: 0.1, puckDensity: 1.0,
+      pinRestitution: 0.4, pinFriction: 0.05,
+      stalledVelocityThreshold: 0.01, stalledTimeoutMs: 10000,
+      angularDamping: 0.3, maxAngularVelocity: 20,
+    },
+    shoveConfig: {
+      maxForceMagnitude: 5.0, minFlickSpeed: 200,
+      flickSampleWindowMs: 80, quantizationPrecision: 0.001, shoveZoneRowLimit: 9,
+      shoveOffsetFraction: 0.35,
+    },
+    scoring: { bounceMultiplierRate: 1.15, bounceMultiplierCap: 10.0 },
+    turnTimerSeconds: 15,
+    maxTieBreakers: 10,
+  };
+
   it('should detect tied players after final round', () => {
     const sm = new GameStateMachine();
-    const config = {
-      totalRounds: 1,
-      boardLayout: {
-        pinRows: 12, bucketCount: 9, pinSpacing: 1.0, pinRadius: 0.15, puckRadius: 0.25,
-        bucketScores: [100, 500, 1000, 5000, 10000, 5000, 1000, 500, 100],
-        boardWidth: 10.0, boardHeight: 14.0,
-      },
-      physics: {
-        gravity: { x: 0, y: -10 }, fixedTimestep: 1 / 60,
-        velocityIterations: 8, positionIterations: 3,
-        puckRestitution: 0.5, puckFriction: 0.1, puckDensity: 1.0,
-        pinRestitution: 0.4, pinFriction: 0.05,
-        stalledVelocityThreshold: 0.01, stalledTimeoutMs: 10000,
-      },
-      shoveConfig: {
-        maxShovesPerTurn: 2, maxForceMagnitude: 5.0, minFlickSpeed: 200,
-        flickSampleWindowMs: 80, quantizationPrecision: 0.001, shoveZoneRowLimit: 9,
-      },
-      turnTimerSeconds: 15,
-      maxTieBreakers: 10,
-    };
+    const config = { ...baseConfig, totalRounds: 1 };
 
     sm.startSession(makePlayers(3), config);
 
@@ -61,27 +67,7 @@ describe('Tie-Breaker Logic', () => {
 
   it('should filter active roster to only tied players', () => {
     const sm = new GameStateMachine();
-    const config = {
-      totalRounds: 1,
-      boardLayout: {
-        pinRows: 12, bucketCount: 9, pinSpacing: 1.0, pinRadius: 0.15, puckRadius: 0.25,
-        bucketScores: [100, 500, 1000, 5000, 10000, 5000, 1000, 500, 100],
-        boardWidth: 10.0, boardHeight: 14.0,
-      },
-      physics: {
-        gravity: { x: 0, y: -10 }, fixedTimestep: 1 / 60,
-        velocityIterations: 8, positionIterations: 3,
-        puckRestitution: 0.5, puckFriction: 0.1, puckDensity: 1.0,
-        pinRestitution: 0.4, pinFriction: 0.05,
-        stalledVelocityThreshold: 0.01, stalledTimeoutMs: 10000,
-      },
-      shoveConfig: {
-        maxShovesPerTurn: 2, maxForceMagnitude: 5.0, minFlickSpeed: 200,
-        flickSampleWindowMs: 80, quantizationPrecision: 0.001, shoveZoneRowLimit: 9,
-      },
-      turnTimerSeconds: 15,
-      maxTieBreakers: 10,
-    };
+    const config = { ...baseConfig, totalRounds: 1 };
 
     sm.startSession(makePlayers(3), config);
 
@@ -102,27 +88,7 @@ describe('Tie-Breaker Logic', () => {
 
   it('should declare winner after tie-breaker resolves', () => {
     const sm = new GameStateMachine();
-    const config = {
-      totalRounds: 1,
-      boardLayout: {
-        pinRows: 12, bucketCount: 9, pinSpacing: 1.0, pinRadius: 0.15, puckRadius: 0.25,
-        bucketScores: [100, 500, 1000, 5000, 10000, 5000, 1000, 500, 100],
-        boardWidth: 10.0, boardHeight: 14.0,
-      },
-      physics: {
-        gravity: { x: 0, y: -10 }, fixedTimestep: 1 / 60,
-        velocityIterations: 8, positionIterations: 3,
-        puckRestitution: 0.5, puckFriction: 0.1, puckDensity: 1.0,
-        pinRestitution: 0.4, pinFriction: 0.05,
-        stalledVelocityThreshold: 0.01, stalledTimeoutMs: 10000,
-      },
-      shoveConfig: {
-        maxShovesPerTurn: 2, maxForceMagnitude: 5.0, minFlickSpeed: 200,
-        flickSampleWindowMs: 80, quantizationPrecision: 0.001, shoveZoneRowLimit: 9,
-      },
-      turnTimerSeconds: 15,
-      maxTieBreakers: 10,
-    };
+    const config = { ...baseConfig, totalRounds: 1 };
 
     sm.startSession(makePlayers(2), config);
 
@@ -150,27 +116,7 @@ describe('Tie-Breaker Logic', () => {
 
   it('should declare co-winners after 10 tied rounds', () => {
     const sm = new GameStateMachine();
-    const config = {
-      totalRounds: 1,
-      boardLayout: {
-        pinRows: 12, bucketCount: 9, pinSpacing: 1.0, pinRadius: 0.15, puckRadius: 0.25,
-        bucketScores: [100, 500, 1000, 5000, 10000, 5000, 1000, 500, 100],
-        boardWidth: 10.0, boardHeight: 14.0,
-      },
-      physics: {
-        gravity: { x: 0, y: -10 }, fixedTimestep: 1 / 60,
-        velocityIterations: 8, positionIterations: 3,
-        puckRestitution: 0.5, puckFriction: 0.1, puckDensity: 1.0,
-        pinRestitution: 0.4, pinFriction: 0.05,
-        stalledVelocityThreshold: 0.01, stalledTimeoutMs: 10000,
-      },
-      shoveConfig: {
-        maxShovesPerTurn: 2, maxForceMagnitude: 5.0, minFlickSpeed: 200,
-        flickSampleWindowMs: 80, quantizationPrecision: 0.001, shoveZoneRowLimit: 9,
-      },
-      turnTimerSeconds: 15,
-      maxTieBreakers: 10,
-    };
+    const config = { ...baseConfig, totalRounds: 1 };
 
     sm.startSession(makePlayers(2), config);
 
