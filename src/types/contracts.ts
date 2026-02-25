@@ -10,6 +10,8 @@ import type {
   ShoveVector,
   BoardLayout,
   ScoreBreakdown,
+  ScoreRevocationEvent,
+  GrowthEvent,
 } from './index';
 
 // ---- Contract 1: PhysicsSimulation ----
@@ -36,6 +38,10 @@ export interface PhysicsStepResult {
   collisions: CollisionEvent[];
   settledPucks: SettledPuckEvent[];
   outOfBoundsPucks: OutOfBoundsEvent[];
+  /** Growth events that occurred this step (same-player puck contacts) */
+  growthEvents: GrowthEvent[];
+  /** Score revocations from pucks displaced out of buckets */
+  scoreRevocations: ScoreRevocationEvent[];
 }
 
 export interface PuckState {
@@ -89,6 +95,8 @@ export interface RenderState {
     angle: number;
     /** Auto-shove stall progress (0.0–1.0). When > 0.9, show warning pulse. */
     autoShoveProgress?: number;
+    /** Growth animation progress (0..1), undefined if not animating */
+    growthAnimProgress?: number;
   }>;
   buckets: Array<{ x: number; width: number; score: number }>;
   shoveZoneY: number;
@@ -99,6 +107,8 @@ export interface RenderState {
     x: number;
     style: PuckStyle;
   };
+  /** Pending score revocation flashes to display */
+  scoreRevocations: ScoreRevocationEvent[];
 }
 
 export type ParticleType = 'pinHit' | 'bucketLand' | 'shove';
@@ -113,7 +123,7 @@ export interface Renderer {
 
 // ---- Contract 4: AudioManager ----
 
-export type SoundName = 'drop' | 'pinHit' | 'shove' | 'bucketLand' | 'winner' | 'tick' | 'timeout' | 'jackpotBucket' | 'coinDing' | 'autoShove';
+export type SoundName = 'drop' | 'pinHit' | 'shove' | 'bucketLand' | 'winner' | 'tick' | 'timeout' | 'jackpotBucket' | 'coinDing' | 'autoShove' | 'puckGrowth';
 
 export interface AudioManager {
   unlock(): Promise<void>;

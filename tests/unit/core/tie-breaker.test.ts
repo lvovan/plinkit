@@ -46,6 +46,7 @@ describe('Tie-Breaker Logic', () => {
     scoring: { bounceMultiplierRate: 1.15, bounceMultiplierCap: 10.0 },
     slowMotion: { targetScale: 0.3, enterDuration: 0.25, holdDuration: 1.5, exitDuration: 0.4 },
     autoShove: { velocityThreshold: 0.1, stallTicks: 180, impulseMagnitude: 1.5, maxAttempts: 3, warningDurationMs: 300 },
+    growth: { surfaceAreaGrowthFactor: 1.20, maxPuckRadius: 0.631, maxChainDepth: 10 },
     turnTimerSeconds: 15,
     maxTieBreakers: 10,
   };

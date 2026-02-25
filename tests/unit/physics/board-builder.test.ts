@@ -12,9 +12,9 @@ describe('BoardBuilder', () => {
   describe('build()', () => {
     it('should create the correct number of pin bodies', () => {
       const board = builder.build(DEFAULT_GAME_CONFIG);
-      // 6 rows: even rows (0,2,4) have 5 pins, odd rows (1,3,5) have 4 pins
-      // 3 even rows × 5 + 3 odd rows × 4 = 15 + 12 = 27
-      const expectedPins = 3 * 5 + 3 * 4;
+      // 5 rows: even rows (0,2,4) have 5 pins, odd rows (1,3) have 4 pins
+      // 3 even rows × 5 + 2 odd rows × 4 = 15 + 8 = 23
+      const expectedPins = 3 * 5 + 2 * 4;
       expect(board.pins.length).toBe(expectedPins);
     });
 

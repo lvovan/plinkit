@@ -10,6 +10,7 @@ import {
   playJackpotBucket,
   playAutoShove,
   playCoinDing,
+  playPuckGrowth,
 } from './synth-effects';
 
 /**
@@ -99,6 +100,9 @@ export class GameAudioManager implements AudioManager {
         break;
       case 'coinDing':
         playCoinDing(ctx, dest, ts);
+        break;
+      case 'puckGrowth':
+        playPuckGrowth(ctx, dest, ts);
         break;
     }
   }

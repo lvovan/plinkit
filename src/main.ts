@@ -107,18 +107,6 @@ function rebuildRenderData(): void {
   }));
 }
 
-/** Randomize the board layout for a new round */
-function randomizeLayout(): void {
-  layout.pinRows = 5 + Math.floor(Math.random() * 5);   // 5–9
-  layout.pinsPerRow = 4 + Math.floor(Math.random() * 3); // 4–6
-  // Compute dynamic pin spacing
-  const edgeMargin = layout.pinRadius + layout.puckRadius;
-  const usableWidth = layout.boardWidth - 2 * edgeMargin;
-  layout.pinSpacing = layout.pinsPerRow > 1
-    ? Math.min(2.0, usableWidth / (layout.pinsPerRow - 1))
-    : 0;
-}
-
 // Initialize render data
 rebuildRenderData();
 
@@ -136,7 +124,11 @@ let slowMotionState: SlowMotionState = createSlowMotionState();
 let isFirstGame = true;
 let shoveOccurredInRound1 = false;
 let totalShoveCount = 0;
+<<<<<<< 010-persistent-puck-growth
+let pendingScoreRevocations: import('@/types/index').ScoreRevocationEvent[] = [];
+=======
 let isSettling = false;
+>>>>>>> main
 
 // ---- Audio rate limiter ----
 const recentSoundTimestamps: number[] = [];
@@ -248,6 +240,9 @@ const loop = new GameLoop({
     if (isSettling) return; // Physics stepping handled by settling loop during settling phase
     if (!puckDropped || !gameRunning) return;
 
+    // Clear pending revocations from previous step
+    pendingScoreRevocations = [];
+
     // Update slow-motion state
     const dt = config.physics.fixedTimestep;
     slowMotionState = updateSlowMotion(slowMotionState, dt, config.slowMotion);
@@ -288,6 +283,39 @@ const loop = new GameLoop({
         collision.y,
         formatMultiplier(bounceCount, config.scoring),
       );
+    }
+
+    // T040/T043: Process growth events — visual pop + audio
+    for (const growthEvent of result.growthEvents) {
+      const board = sim.getBoard();
+      if (board) {
+        const puckA = board.pucks.find(p => p.id === growthEvent.puckIdA);
+        const puckB = board.pucks.find(p => p.id === growthEvent.puckIdB);
+        if (puckA) {
+          const posA = puckA.body.getPosition();
+          effects.addGrowthPop(posA.x, posA.y);
+        }
+        if (puckB) {
+          const posB = puckB.body.getPosition();
+          effects.addGrowthPop(posB.x, posB.y);
+        }
+      }
+      if (!shouldAttenuateSound()) {
+        audioManager.play('puckGrowth', { timeScale });
+      }
+    }
+
+    // T054: Process score revocations — subtract score, flash, update scoreboard
+    for (const revocation of result.scoreRevocations) {
+      const state = stateMachine.getState();
+      const player = state.players.find(p => p.id === revocation.playerId);
+      if (player) {
+        const actualRevoked = scoring.revokeScore(player.score, revocation.revokedScore);
+        player.score -= actualRevoked;
+        effects.addNegativeScoreFlash(revocation.x, revocation.y, actualRevoked);
+        overlays.updateScoreboard(state.players);
+        pendingScoreRevocations.push({ ...revocation, revokedScore: actualRevoked });
+      }
     }
 
     // Check for out-of-bounds pucks
@@ -344,11 +372,21 @@ const loop = new GameLoop({
       // Calculate score with bounce multiplier
       const scoreBreakdown = scoring.calculateRoundScore(settled.bucketIndex, bounceCount);
 
+<<<<<<< 010-persistent-puck-growth
+      // T051: Track score awarded on the PuckBody for revocation
+      const board = sim.getBoard();
+      if (board) {
+        const settledPuck = board.pucks.find(p => p.id === settled.puckId);
+        if (settledPuck) {
+          settledPuck.scoreAwarded = scoreBreakdown.totalScore;
+        }
+=======
       // Stamp bounce multiplier on the puck body for persistence across rounds
       const allPucks = sim.getAllPucks();
       const settledPuck = allPucks.find(p => p.id === settled.puckId);
       if (settledPuck) {
         settledPuck.bounceMultiplier = scoreBreakdown.multiplier;
+>>>>>>> main
       }
 
       // Audio and visual feedback for bucket landing
@@ -417,22 +455,28 @@ const loop = new GameLoop({
 
   onRender(alpha) {
     const snapshot = sim.getSnapshot();
+    const board = sim.getBoard();
 
     const state: RenderState = {
       pins: pinRenderData,
-      pucks: snapshot.pucks.map(p => ({
-        x: p.x,
-        y: p.y,
-        radius: layout.puckRadius,
-        style: puckStyleMap.get(p.id) ?? currentPuckStyle,
-        settled: p.settled,
-        angle: p.angle,
-        autoShoveProgress: sim.getAutoShoveProgress(p.id),
-      })),
+      pucks: snapshot.pucks.map(p => {
+        // Use PuckBody.currentRadius for dynamic puck sizing (growth)
+        const puckBody = board?.pucks.find(pb => pb.id === p.id);
+        return {
+          x: p.x,
+          y: p.y,
+          radius: puckBody?.currentRadius ?? layout.puckRadius,
+          style: puckStyleMap.get(p.id) ?? currentPuckStyle,
+          settled: p.settled,
+          angle: p.angle,
+          autoShoveProgress: sim.getAutoShoveProgress(p.id),
+        };
+      }),
       buckets: bucketRenderData,
       shoveZoneY,
       activePuckId,
       interpolationAlpha: alpha,
+      scoreRevocations: pendingScoreRevocations,
       // Ghost puck shown before drop; default dropX to center (0) per FR-014
       ...((!puckDropped && currentPlayer) ? {
         dropIndicator: {
@@ -459,6 +503,9 @@ async function transitionToNextRound(): Promise<void> {
     gameRunning = true;
   }
 
+<<<<<<< 010-persistent-puck-growth
+  // Board layout is fixed (8-row, no randomization) — pucks persist across rounds
+=======
   // Snapshot old bucket assignments for score delta detection
   const oldBuckets = new Map<string, number | null>();
   for (const puck of sim.getAllPucks()) {
@@ -523,6 +570,7 @@ async function transitionToNextRound(): Promise<void> {
     }
   }
 
+>>>>>>> main
   startNextTurn();
 }
 
@@ -589,7 +637,6 @@ async function handleGameEnd(players: Player[], winner: Player | Player[], isTie
     stateMachine.resetForReplay();
     sim.clearPucks();
     puckStyleMap.clear();
-    randomizeLayout();
     sim.createWorld(config);
     shoveZoneY = sim.getBoard()?.shoveZoneY ?? 0;
     rebuildRenderData();
@@ -605,7 +652,6 @@ async function handleGameEnd(players: Player[], winner: Player | Player[], isTie
     stateMachine.resetFull();
     sim.clearPucks();
     puckStyleMap.clear();
-    randomizeLayout();
     sim.createWorld(config);
     shoveZoneY = sim.getBoard()?.shoveZoneY ?? 0;
     rebuildRenderData();
@@ -669,7 +715,6 @@ async function startGame(): Promise<void> {
 
   sim.clearPucks();
   puckStyleMap.clear();
-  randomizeLayout();
   sim.createWorld(config);
   shoveZoneY = sim.getBoard()?.shoveZoneY ?? 0;
   rebuildRenderData();
