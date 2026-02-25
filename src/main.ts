@@ -124,11 +124,8 @@ let slowMotionState: SlowMotionState = createSlowMotionState();
 let isFirstGame = true;
 let shoveOccurredInRound1 = false;
 let totalShoveCount = 0;
-<<<<<<< 010-persistent-puck-growth
 let pendingScoreRevocations: import('@/types/index').ScoreRevocationEvent[] = [];
-=======
 let isSettling = false;
->>>>>>> main
 
 // ---- Audio rate limiter ----
 const recentSoundTimestamps: number[] = [];
@@ -372,21 +369,15 @@ const loop = new GameLoop({
       // Calculate score with bounce multiplier
       const scoreBreakdown = scoring.calculateRoundScore(settled.bucketIndex, bounceCount);
 
-<<<<<<< 010-persistent-puck-growth
       // T051: Track score awarded on the PuckBody for revocation
+      // Stamp bounce multiplier on the puck body for persistence across rounds
       const board = sim.getBoard();
       if (board) {
         const settledPuck = board.pucks.find(p => p.id === settled.puckId);
         if (settledPuck) {
           settledPuck.scoreAwarded = scoreBreakdown.totalScore;
+          settledPuck.bounceMultiplier = scoreBreakdown.multiplier;
         }
-=======
-      // Stamp bounce multiplier on the puck body for persistence across rounds
-      const allPucks = sim.getAllPucks();
-      const settledPuck = allPucks.find(p => p.id === settled.puckId);
-      if (settledPuck) {
-        settledPuck.bounceMultiplier = scoreBreakdown.multiplier;
->>>>>>> main
       }
 
       // Audio and visual feedback for bucket landing
@@ -503,17 +494,14 @@ async function transitionToNextRound(): Promise<void> {
     gameRunning = true;
   }
 
-<<<<<<< 010-persistent-puck-growth
   // Board layout is fixed (8-row, no randomization) — pucks persist across rounds
-=======
   // Snapshot old bucket assignments for score delta detection
   const oldBuckets = new Map<string, number | null>();
   for (const puck of sim.getAllPucks()) {
     oldBuckets.set(puck.id, puck.settledInBucket);
   }
 
-  // Rebuild board with new random layout (pucks persist)
-  randomizeLayout();
+  // Rebuild board (pucks persist)
   sim.rebuildBoard(config);
   shoveZoneY = sim.getBoard()?.shoveZoneY ?? 0;
   rebuildRenderData();
@@ -570,7 +558,6 @@ async function transitionToNextRound(): Promise<void> {
     }
   }
 
->>>>>>> main
   startNextTurn();
 }
 

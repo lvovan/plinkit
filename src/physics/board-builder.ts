@@ -26,7 +26,6 @@ export interface PuckBody {
   isSettled: boolean;
   settledInBucket: number | null;
   createdAtTick: number;
-<<<<<<< 010-persistent-puck-growth
   /** Current collision radius (starts at puckRadius, grows up to maxPuckRadius) */
   currentRadius: number;
   /** Number of growth events applied */
@@ -35,10 +34,8 @@ export interface PuckBody {
   lastScoredBucket: number | null;
   /** Score currently attributed to this puck (0 if not in bucket or revoked) */
   scoreAwarded: number;
-=======
   /** Bounce multiplier at settlement. Default 1.0. Preserved across rounds for score recalculation. */
   bounceMultiplier: number;
->>>>>>> main
 }
 
 /**

@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { PhysicsSimulationImpl } from '@/physics/simulation';
-import { ScoringEngine } from '@/core/scoring';
 import { createGameConfig } from '@/config/game-config';
 import type { GameConfig } from '@/types/index';
 import type { PuckBody } from '@/physics/board-builder';
@@ -54,7 +53,7 @@ describe('Puck Settling (US3)', () => {
     }
 
     const board = sim.getBoard()!;
-    const puck = board.pucks.find(p => p.id === puckId)!;
+    board.pucks.find(p => p.id === puckId)!;
 
     // Rebuild board (which may displace puck)
     sim.rebuildBoard(config);

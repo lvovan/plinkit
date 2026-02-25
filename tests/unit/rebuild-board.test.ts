@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { PhysicsSimulationImpl } from '@/physics/simulation';
-import { DEFAULT_GAME_CONFIG, createGameConfig } from '@/config/game-config';
+import { createGameConfig } from '@/config/game-config';
 import type { GameConfig } from '@/types/index';
 
 describe('rebuildBoard()', () => {
@@ -46,7 +46,6 @@ describe('rebuildBoard()', () => {
   // T005: rebuildBoard destroys and recreates bucket walls, recomputes shoveZoneY, and rebuilds BucketDetector
   it('should destroy/recreate bucket walls, recompute shoveZoneY, rebuild BucketDetector', () => {
     const board = sim.getBoard()!;
-    const originalBucketWallCount = board.bucketWalls.length;
     const originalShoveZoneY = board.shoveZoneY;
 
     // Change to a different layout

@@ -11,15 +11,12 @@ import type {
 } from '@/types/contracts';
 import { BoardBuilder, type Board, type PuckBody } from './board-builder';
 import { BucketDetector } from './bucket-detector';
-<<<<<<< 010-persistent-puck-growth
 import { processGrowthQueue } from './puck-growth';
-=======
 import {
   computePinPositions,
   computeBucketBoundaries,
   computeShoveZoneY,
 } from '@/config/board-geometry';
->>>>>>> main
 
 let nextPuckId = 0;
 
@@ -99,14 +96,11 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
       isSettled: false,
       settledInBucket: null,
       createdAtTick: this.tick,
-<<<<<<< 010-persistent-puck-growth
       currentRadius: boardLayout.puckRadius,
       growthCount: 0,
       lastScoredBucket: null,
       scoreAwarded: 0,
-=======
       bounceMultiplier: 1.0,
->>>>>>> main
     };
 
     this.board.pucks.push(puckBody);

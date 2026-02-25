@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { PhysicsSimulationImpl } from '@/physics/simulation';
 import { createGameConfig } from '@/config/game-config';
 import type { GameConfig } from '@/types/index';
-import type { PuckBody } from '@/physics/board-builder';
 
 describe('Puck Persistence (US1)', () => {
   let sim: PhysicsSimulationImpl;

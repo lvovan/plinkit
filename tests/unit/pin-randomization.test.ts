@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { PhysicsSimulationImpl } from '@/physics/simulation';
 import { createGameConfig } from '@/config/game-config';
 import type { GameConfig } from '@/types/index';
-import * as planck from 'planck';
 
 /**
  * Pin Randomization Timing (US2)
