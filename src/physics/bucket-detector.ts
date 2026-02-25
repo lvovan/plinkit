@@ -1,4 +1,4 @@
-import type { BoardLayout, PhysicsConfig, AutoShoveConfig, AutoShoveEvent } from '@/types/index';
+import type { BoardLayout, PhysicsConfig, AutoShoveConfig, AutoShoveEvent, ScoreRevocationEvent } from '@/types/index';
 import type { PuckBody } from './board-builder';
 import { getBucketIndexAtX, computeBucketBoundaries } from '@/config/board-geometry';
 
@@ -138,6 +138,63 @@ export class BucketDetector {
     if (startTick === undefined) return 0;
     const elapsed = currentTick - startTick;
     return Math.min(1.0, elapsed / this.autoShoveConfig.stallTicks);
+  }
+
+  /**
+   * T049: Check if any settled pucks have been displaced out of their bucket.
+   * A settled puck is "displaced" when:
+   * 1. It was marked as settled (isSettled=true, settledInBucket >= 0)
+   * 2. It has been woken up (body.isAwake())
+   * 3. Its current position is in a different bucket or above the bucket zone
+   *
+   * Returns score revocation events for displaced pucks.
+   */
+  checkDisplacement(pucks: PuckBody[]): ScoreRevocationEvent[] {
+    const revocations: ScoreRevocationEvent[] = [];
+    const boardBottom = -this.boardLayout.boardHeight / 2;
+    const bucketRegionTop = boardBottom + 3.5;
+
+    for (const puck of pucks) {
+      // Only check pucks that were settled in a valid bucket and have a score
+      if (!puck.isSettled || puck.settledInBucket === null || puck.settledInBucket < 0) continue;
+      if (puck.scoreAwarded <= 0) continue;
+
+      const pos = puck.body.getPosition();
+      const vel = puck.body.getLinearVelocity();
+      const speed = vel.length();
+
+      // Check if the puck has been moved out of its bucket:
+      // Either it's awake with significant velocity, or it's in a different position
+      if (puck.body.isAwake() && speed > this.physicsConfig.stalledVelocityThreshold * 5) {
+        // Check if it has left its original bucket
+        const currentBucket = this.assignBucket(pos.x);
+
+        // If above bucket zone or in a different bucket, it's displaced
+        if (pos.y > bucketRegionTop || currentBucket !== puck.settledInBucket) {
+          revocations.push({
+            puckId: puck.id,
+            playerId: puck.playerId,
+            revokedScore: puck.scoreAwarded,
+            fromBucket: puck.settledInBucket,
+            x: pos.x,
+            y: pos.y,
+          });
+
+          // Reset settlement state
+          puck.isSettled = false;
+          puck.settledInBucket = null;
+          puck.lastScoredBucket = null;
+          puck.scoreAwarded = 0;
+
+          // Clear stall timers for this puck so it can re-settle
+          this.stalledTimers.delete(puck.id);
+          this.autoShoveStallStart.delete(puck.id);
+          this.autoShoveAttempts.delete(puck.id);
+        }
+      }
+    }
+
+    return revocations;
   }
 
   private assignBucket(x: number): number {

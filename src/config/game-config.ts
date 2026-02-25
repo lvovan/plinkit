@@ -1,9 +1,9 @@
-import type { GameConfig, BoardLayout, PhysicsConfig, ShoveConfig, ScoringConfig, SlowMotionConfig, AutoShoveConfig } from '@/types/index';
+import type { GameConfig, BoardLayout, PhysicsConfig, ShoveConfig, ScoringConfig, SlowMotionConfig, AutoShoveConfig, GrowthConfig } from '@/types/index';
 
 // ---- Board Layout ----
 
 export const DEFAULT_BOARD_LAYOUT: BoardLayout = {
-  pinRows: 6,
+  pinRows: 5,
   bucketCount: 5,
   pinSpacing: 2.0,        // 2 world units between pin centers
   pinRadius: 0.30,       // pin visual/collision radius (scaled with spacing)
@@ -12,6 +12,7 @@ export const DEFAULT_BOARD_LAYOUT: BoardLayout = {
   boardWidth: 10.0,      // total board width in world units
   boardHeight: 14.0,     // total board height in world units
   pinsPerRow: 5,         // pins in even rows (odd rows get pinsPerRow - 1)
+  bucketWidths: [0.25, 0.20, 0.10, 0.20, 0.25], // explicit bucket width fractions
 };
 
 // ---- Physics Config ----
@@ -40,7 +41,7 @@ export const DEFAULT_SHOVE_CONFIG: ShoveConfig = {
   minFlickSpeed: 200,          // px/s minimum pointer velocity
   flickSampleWindowMs: 80,     // velocity sampling window
   quantizationPrecision: 0.001,
-  shoveZoneRowLimit: 5,        // shoves allowed only above row 5
+  shoveZoneRowLimit: 4,        // shoves allowed only above row 4
   shoveOffsetFraction: 0.25,   // 25% of puck radius for off-center shove spin
 };
 
@@ -70,6 +71,14 @@ export const DEFAULT_AUTO_SHOVE: AutoShoveConfig = {
   warningDurationMs: 300,
 };
 
+// ---- Growth Config ----
+
+export const DEFAULT_GROWTH_CONFIG: GrowthConfig = {
+  surfaceAreaGrowthFactor: 1.20,
+  maxPuckRadius: 0.631,
+  maxChainDepth: 10,
+};
+
 // ---- Full Game Config ----
 
 export const DEFAULT_GAME_CONFIG: GameConfig = {
@@ -82,6 +91,7 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
   turnTimerSeconds: 15,
   maxTieBreakers: 10,
   autoShove: DEFAULT_AUTO_SHOVE,
+  growth: DEFAULT_GROWTH_CONFIG,
 };
 
 /**
@@ -115,6 +125,10 @@ export function createGameConfig(overrides?: Partial<GameConfig>): GameConfig {
     autoShove: {
       ...DEFAULT_AUTO_SHOVE,
       ...overrides.autoShove,
+    },
+    growth: {
+      ...DEFAULT_GROWTH_CONFIG,
+      ...overrides.growth,
     },
   };
 }

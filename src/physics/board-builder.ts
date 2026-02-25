@@ -5,6 +5,7 @@ import {
   computeBucketBoundaries,
   computeShoveZoneY,
   getBoardWalls,
+  BUCKET_DIVIDER_HEIGHT,
 } from '@/config/board-geometry';
 
 /** Runtime board object holding all Planck.js bodies */
@@ -25,6 +26,14 @@ export interface PuckBody {
   isSettled: boolean;
   settledInBucket: number | null;
   createdAtTick: number;
+  /** Current collision radius (starts at puckRadius, grows up to maxPuckRadius) */
+  currentRadius: number;
+  /** Number of growth events applied */
+  growthCount: number;
+  /** Which bucket score was last awarded (for revocation tracking) */
+  lastScoredBucket: number | null;
+  /** Score currently attributed to this puck (0 if not in bucket or revoked) */
+  scoreAwarded: number;
 }
 
 /**
@@ -105,7 +114,7 @@ export class BoardBuilder {
     const buckets = computeBucketBoundaries(boardLayout);
     const bucketWalls: planck.Body[] = [];
     const halfH = boardLayout.boardHeight / 2;
-    const bucketHeight = 1.5; // world units tall for bucket dividers
+    const bucketHeight = BUCKET_DIVIDER_HEIGHT;
     const bucketBottom = -halfH;
     const bucketTop = bucketBottom + bucketHeight;
 

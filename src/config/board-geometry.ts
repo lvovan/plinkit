@@ -1,5 +1,27 @@
 import type { BoardLayout, PinPosition, BucketBoundary, Vec2 } from '@/types/index';
 
+/** Height of bucket divider walls in world units (shared with board-builder). */
+export const BUCKET_DIVIDER_HEIGHT = 1.5;
+
+/** Minimum clearance between the bottom pin row and the top of bucket dividers,
+ *  expressed as a multiple of puckRadius. */
+const BUCKET_CLEARANCE_FACTOR = 1.25;
+
+/** Compute top and bottom margins for pin placement.
+ *  The entire pin grid is shifted up by BUCKET_DIVIDER_HEIGHT so pins sit
+ *  well above the bucket zone. */
+function getPinMargins(layout: BoardLayout): { topMargin: number; bottomMargin: number } {
+  const halfH = layout.boardHeight / 2;
+  // Bottom margin: ensure bottom pin row sits at least BUCKET_CLEARANCE_FACTOR * puckRadius
+  // above the top of the tallest bucket divider, then translate the whole grid
+  // up by an additional BUCKET_DIVIDER_HEIGHT.
+  const bucketTop = -halfH + BUCKET_DIVIDER_HEIGHT;
+  const minBottomPinY = bucketTop + BUCKET_CLEARANCE_FACTOR * layout.puckRadius + BUCKET_DIVIDER_HEIGHT;
+  const bottomMargin = minBottomPinY + halfH;
+  const topMargin = 3.0;
+  return { topMargin, bottomMargin };
+}
+
 /**
  * Compute pin positions in a staggered Plinko layout.
  *
@@ -14,10 +36,7 @@ export function computePinPositions(layout: BoardLayout): PinPosition[] {
   // Use pinsPerRow if available, fallback to bucketCount for backwards compatibility
   const pinsPerRow = layout.pinsPerRow ?? layout.bucketCount;
 
-  // Dynamic margins: reduce for dense layouts (≥8 rows) to maintain diagonal passability
-  const margin = pinRows >= 8 ? 1.5 : 2.0;
-  const topMargin = margin;
-  const bottomMargin = margin;
+  const { topMargin, bottomMargin } = getPinMargins(layout);
   const usableHeight = boardHeight - topMargin - bottomMargin;
   const rowSpacing = usableHeight / (pinRows - 1);
 
@@ -50,37 +69,40 @@ export function computePinPositions(layout: BoardLayout): PinPosition[] {
 
 /**
  * Compute bucket boundary positions across the bottom of the board.
- * Bucket widths are proportional to log₁₀(score) — higher-scoring buckets are wider.
+ * Uses explicit `bucketWidths` fractions when provided, otherwise falls back
+ * to log₁₀(score)-proportional widths.
  */
 export function computeBucketBoundaries(layout: BoardLayout): BucketBoundary[] {
   const { bucketCount, bucketScores, boardWidth } = layout;
   const halfBoard = boardWidth / 2;
-  const MIN_BUCKET_WIDTH = 1.2; // minimum width for puck to fit
 
-  // Compute log₁₀ weights for proportional widths
-  const weights = bucketScores.map(s => Math.log10(Math.max(1, s)));
-  const totalWeight = weights.reduce((a, b) => a + b, 0);
+  let widths: number[];
 
-  // Initial proportional widths
-  let widths = weights.map(w => (w / totalWeight) * boardWidth);
+  if (layout.bucketWidths && layout.bucketWidths.length === bucketCount) {
+    // Use explicit fractional widths
+    widths = layout.bucketWidths.map(f => f * boardWidth);
+  } else {
+    // Fallback: log₁₀ proportional widths
+    const MIN_BUCKET_WIDTH = 1.2;
+    const weights = bucketScores.map(s => Math.log10(Math.max(1, s)));
+    const totalWeight = weights.reduce((a, b) => a + b, 0);
+    widths = weights.map(w => (w / totalWeight) * boardWidth);
 
-  // Clamp to minimum width and redistribute excess
-  let deficit = 0;
-  for (let i = 0; i < widths.length; i++) {
-    if (widths[i] < MIN_BUCKET_WIDTH) {
-      deficit += MIN_BUCKET_WIDTH - widths[i];
-      widths[i] = MIN_BUCKET_WIDTH;
+    let deficit = 0;
+    for (let i = 0; i < widths.length; i++) {
+      if (widths[i] < MIN_BUCKET_WIDTH) {
+        deficit += MIN_BUCKET_WIDTH - widths[i];
+        widths[i] = MIN_BUCKET_WIDTH;
+      }
     }
-  }
-
-  // Redistribute deficit proportionally from buckets above minimum
-  if (deficit > 0) {
-    const aboveMin = widths.filter(w => w > MIN_BUCKET_WIDTH);
-    const aboveTotal = aboveMin.reduce((a, b) => a + b, 0);
-    if (aboveTotal > 0) {
-      widths = widths.map(w =>
-        w > MIN_BUCKET_WIDTH ? w - deficit * (w / aboveTotal) : w,
-      );
+    if (deficit > 0) {
+      const aboveMin = widths.filter(w => w > MIN_BUCKET_WIDTH);
+      const aboveTotal = aboveMin.reduce((a, b) => a + b, 0);
+      if (aboveTotal > 0) {
+        widths = widths.map(w =>
+          w > MIN_BUCKET_WIDTH ? w - deficit * (w / aboveTotal) : w,
+        );
+      }
     }
   }
 
@@ -112,9 +134,7 @@ export function computeShoveZoneY(
   shoveZoneRowLimit: number,
 ): number {
   const { pinRows, boardHeight } = layout;
-  const margin = pinRows >= 8 ? 1.5 : 2.0;
-  const topMargin = margin;
-  const bottomMargin = margin;
+  const { topMargin, bottomMargin } = getPinMargins(layout);
   const usableHeight = boardHeight - topMargin - bottomMargin;
   const rowSpacing = usableHeight / (pinRows - 1);
 
@@ -128,8 +148,8 @@ export function computeShoveZoneY(
  * Get the drop zone Y position (above the first pin row).
  */
 export function getDropZoneY(layout: BoardLayout): number {
-  const margin = layout.pinRows >= 8 ? 1.5 : 2.0;
-  return layout.boardHeight / 2 - margin / 2;
+  const { topMargin } = getPinMargins(layout);
+  return layout.boardHeight / 2 - topMargin / 2;
 }
 
 /**

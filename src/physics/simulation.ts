@@ -1,5 +1,5 @@
 import * as planck from 'planck';
-import type { GameConfig, ShoveVector, AutoShoveEvent } from '@/types/index';
+import type { GameConfig, ShoveVector, AutoShoveEvent, GrowthEvent } from '@/types/index';
 import type {
   PhysicsSimulation,
   PhysicsStepResult,
@@ -11,6 +11,7 @@ import type {
 } from '@/types/contracts';
 import { BoardBuilder, type Board, type PuckBody } from './board-builder';
 import { BucketDetector } from './bucket-detector';
+import { processGrowthQueue } from './puck-growth';
 
 let nextPuckId = 0;
 
@@ -31,6 +32,8 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
   private oobTimers: Map<string, number> = new Map();
   /** Auto-shove events from the last step() call */
   private pendingAutoShoves: AutoShoveEvent[] = [];
+  /** Pending same-player puck-puck contacts for growth processing */
+  private pendingGrowthEvents: GrowthEvent[] = [];
 
   createWorld(config: GameConfig): void {
     this.config = config;
@@ -88,6 +91,10 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
       isSettled: false,
       settledInBucket: null,
       createdAtTick: this.tick,
+      currentRadius: boardLayout.puckRadius,
+      growthCount: 0,
+      lastScoredBucket: null,
+      scoreAwarded: 0,
     };
 
     this.board.pucks.push(puckBody);
@@ -148,6 +155,7 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
     this.tick++;
     this.pendingCollisions = [];
     this.pendingAutoShoves = [];
+    this.pendingGrowthEvents = [];
 
     // Step the world
     const { fixedTimestep, velocityIterations, positionIterations, maxAngularVelocity } = this.config.physics;
@@ -160,6 +168,18 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
       if (Math.abs(w) > maxAngularVelocity) {
         puck.body.setAngularVelocity(Math.sign(w) * maxAngularVelocity);
       }
+    }
+
+    // Process growth queue: same-player puck contacts → resize fixtures
+    const growthEvents: GrowthEvent[] = [];
+    if (this.pendingGrowthEvents.length > 0) {
+      const processed = processGrowthQueue(
+        this.pendingGrowthEvents,
+        this.board.pucks,
+        this.config.growth,
+        this.config.physics,
+      );
+      growthEvents.push(...processed);
     }
 
     // Check for settled pucks
@@ -204,6 +224,8 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
         if (settled.type === 'settled') {
           puck.isSettled = true;
           puck.settledInBucket = settled.bucketIndex;
+          // T051: Track bucket score for revocation
+          puck.lastScoredBucket = settled.bucketIndex;
           settledPucks.push({
             puckId: puck.id,
             bucketIndex: settled.bucketIndex,
@@ -214,11 +236,16 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
       }
     }
 
+    // T050: Check for settled pucks displaced out of their buckets
+    const scoreRevocations = this.bucketDetector!.checkDisplacement(this.board.pucks);
+
     return {
       tick: this.tick,
       collisions: [...this.pendingCollisions],
       settledPucks,
       outOfBoundsPucks,
+      growthEvents,
+      scoreRevocations,
     };
   }
 
@@ -350,5 +377,19 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
       x: pos.x,
       y: pos.y,
     });
+
+    // T034: Detect same-player puck-puck contacts for growth
+    if (dataA.type === 'puck' && dataB.type === 'puck' && dataA.id && dataB.id && this.board) {
+      const puckA = this.board.pucks.find(p => p.id === dataA.id);
+      const puckB = this.board.pucks.find(p => p.id === dataB.id);
+      if (puckA && puckB && puckA.playerId === puckB.playerId) {
+        this.pendingGrowthEvents.push({
+          puckIdA: puckA.id,
+          puckIdB: puckB.id,
+          playerId: puckA.playerId,
+          chainDepth: 0,
+        });
+      }
+    }
   }
 }

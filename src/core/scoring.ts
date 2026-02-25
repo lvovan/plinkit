@@ -52,4 +52,17 @@ export class ScoringEngine {
     const totalScore = Math.floor(baseScore * multiplier);
     return { baseScore, bounceCount, multiplier, totalScore };
   }
+
+  /**
+   * T048: Revoke a score amount from a player's current score.
+   * Returns the actual amount subtracted (may be less if clamped to 0).
+   * Score is clamped at 0 — never goes negative.
+   *
+   * @param currentScore The player's current score
+   * @param amount The score to revoke
+   * @returns Actual amount subtracted
+   */
+  revokeScore(currentScore: number, amount: number): number {
+    return Math.min(currentScore, amount);
+  }
 }

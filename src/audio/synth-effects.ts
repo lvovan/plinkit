@@ -366,3 +366,42 @@ export function playCoinDing(ctx: AudioContext, destination: AudioNode, timeScal
   osc2.start(now);
   osc2.stop(now + dur);
 }
+
+/**
+ * T041: Puck growth pop sound — sine sweep 200→800 Hz + noise burst.
+ * ~60ms, bubbly "pop" feel with brief white noise for texture.
+ */
+export function playPuckGrowth(ctx: AudioContext, destination: AudioNode, timeScale?: number): void {
+  const now = ctx.currentTime;
+  const dur = stretchDuration(0.06, timeScale);
+
+  // Layer 1: sine sweep 200→800 Hz
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(pitchShift(200, timeScale), now);
+  osc.frequency.exponentialRampToValueAtTime(pitchShift(800, timeScale), now + dur * 0.8);
+  gain.gain.setValueAtTime(0.35, now);
+  gain.gain.exponentialRampToValueAtTime(0.01, now + dur);
+  osc.connect(gain);
+  gain.connect(destination);
+  osc.start(now);
+  osc.stop(now + dur);
+
+  // Layer 2: brief noise burst for texture
+  const bufferSize = Math.ceil(ctx.sampleRate * dur);
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1) * 0.15;
+  }
+  const noise = ctx.createBufferSource();
+  noise.buffer = buffer;
+  const noiseGain = ctx.createGain();
+  noiseGain.gain.setValueAtTime(0.2, now);
+  noiseGain.gain.exponentialRampToValueAtTime(0.01, now + dur);
+  noise.connect(noiseGain);
+  noiseGain.connect(destination);
+  noise.start(now);
+  noise.stop(now + dur);
+}

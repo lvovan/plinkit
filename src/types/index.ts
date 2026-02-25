@@ -58,6 +58,8 @@ export interface BoardLayout {
   boardHeight: number;
   /** Number of pins in even-numbered rows (odd rows get pinsPerRow - 1). Default: 5 */
   pinsPerRow: number;
+  /** Explicit bucket width fractions (must sum to 1.0). If omitted, widths are computed via log₁₀ weighting. */
+  bucketWidths?: number[];
 }
 
 export interface PhysicsConfig {
@@ -114,6 +116,16 @@ export interface AutoShoveEvent {
   direction: { x: number; y: number };
 }
 
+/** Configuration for same-player puck growth mechanics */
+export interface GrowthConfig {
+  /** Surface area growth factor per same-player contact. Default: 1.20 (20% increase) */
+  surfaceAreaGrowthFactor: number;
+  /** Maximum puck radius after growth (world units). Default: 0.631 */
+  maxPuckRadius: number;
+  /** Maximum chain-reaction depth per drop. Default: 10 */
+  maxChainDepth: number;
+}
+
 export interface GameConfig {
   totalRounds: number;
   boardLayout: BoardLayout;
@@ -124,6 +136,7 @@ export interface GameConfig {
   scoring: ScoringConfig;
   slowMotion: SlowMotionConfig;
   autoShove: AutoShoveConfig;
+  growth: GrowthConfig;
 }
 
 // ---- Turn Records ----
@@ -167,6 +180,37 @@ export interface RuntimePuck {
   turnIndex: number;
   isSettled: boolean;
   settledInBucket: number | null;
+  /** Current collision radius (starts at puckRadius, grows up to MAX_PUCK_RADIUS) */
+  currentRadius: number;
+  /** Number of growth events applied (for debugging/telemetry) */
+  growthCount: number;
+}
+
+/** Runtime event emitted when two same-player pucks touch */
+export interface GrowthEvent {
+  /** First puck in the contact pair */
+  puckIdA: string;
+  /** Second puck in the contact pair */
+  puckIdB: string;
+  /** Owning player (same for both pucks) */
+  playerId: string;
+  /** Chain depth at which this event was generated (0 = initial contact) */
+  chainDepth: number;
+}
+
+/** Emitted when a puck is displaced from a bucket and its score is revoked */
+export interface ScoreRevocationEvent {
+  /** The puck that was displaced */
+  puckId: string;
+  /** The owning player whose score is reduced */
+  playerId: string;
+  /** The score amount being subtracted */
+  revokedScore: number;
+  /** The bucket the puck was displaced from */
+  fromBucket: number;
+  /** World position for the negative-score flash */
+  x: number;
+  y: number;
 }
 
 // ---- Geometry ----

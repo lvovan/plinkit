@@ -1,5 +1,6 @@
 /**
- * Visual effects — board shake, score pop animations, collision flashes, and slash effects.
+ * Visual effects — board shake, score pop animations, collision flashes, slash effects,
+ * growth pop animation, and negative score flash.
  */
 
 import type { CollisionFlash, SlashEffect, ScoreBreakdown } from '@/types/index';
@@ -17,6 +18,23 @@ export interface ScorePopEffect {
   duration: number;
 }
 
+/** T038: Growth pop animation — scale-up with overshoot */
+export interface GrowthPopEffect {
+  x: number;
+  y: number;
+  startTime: number;
+  duration: number;
+}
+
+/** T052: Negative score flash — red "-X" text with fade */
+export interface NegativeScoreFlash {
+  x: number;
+  y: number;
+  amount: number;
+  startTime: number;
+  duration: number;
+}
+
 /**
  * Manages visual effects like board shake, score pop animations,
  * collision flashes, and slash effects.
@@ -26,6 +44,8 @@ export class EffectsManager {
   private scorePops: ScorePopEffect[] = [];
   private collisionFlashes: CollisionFlash[] = [];
   private slashEffects: SlashEffect[] = [];
+  private growthPops: GrowthPopEffect[] = [];
+  private negativeFlashes: NegativeScoreFlash[] = [];
 
   /** Trigger a board shake effect. */
   triggerShake(intensity: number, durationMs: number): void {
@@ -96,6 +116,38 @@ export class EffectsManager {
     return this.slashEffects;
   }
 
+  /** Add a growth pop effect at the given position. */
+  addGrowthPop(x: number, y: number): void {
+    this.growthPops.push({
+      x, y,
+      startTime: performance.now(),
+      duration: 300,
+    });
+  }
+
+  /** Get active growth pop effects. Removes expired ones. */
+  getActiveGrowthPops(): GrowthPopEffect[] {
+    const now = performance.now();
+    this.growthPops = this.growthPops.filter(p => now - p.startTime < p.duration);
+    return this.growthPops;
+  }
+
+  /** Add a negative score flash effect at the given position. */
+  addNegativeScoreFlash(x: number, y: number, amount: number): void {
+    this.negativeFlashes.push({
+      x, y, amount,
+      startTime: performance.now(),
+      duration: 1200,
+    });
+  }
+
+  /** Get active negative score flashes. Removes expired ones. */
+  getActiveNegativeFlashes(): NegativeScoreFlash[] {
+    const now = performance.now();
+    this.negativeFlashes = this.negativeFlashes.filter(f => now - f.startTime < f.duration);
+    return this.negativeFlashes;
+  }
+
   /**
    * Render all active visual effects (flashes, slashes, score pops).
    * Called once per frame from the render loop.
@@ -108,6 +160,8 @@ export class EffectsManager {
     this.renderCollisionFlashes(ctx, worldToCanvas, worldToPixels);
     this.renderSlashEffects(ctx, worldToCanvas, worldToPixels);
     this.renderScorePops(ctx, worldToCanvas);
+    this.renderGrowthPops(ctx, worldToCanvas, worldToPixels);
+    this.renderNegativeFlashes(ctx, worldToCanvas);
   }
 
   /** Render collision flash effects — radial gradient + multiplier text. */
@@ -238,11 +292,72 @@ export class EffectsManager {
     }
   }
 
+  /** Render growth pop effects — expanding ring with overshoot. */
+  private renderGrowthPops(
+    ctx: CanvasRenderingContext2D,
+    worldToCanvas: (wx: number, wy: number) => { x: number; y: number },
+    worldToPixels: (size: number) => number,
+  ): void {
+    const now = performance.now();
+    for (const pop of this.getActiveGrowthPops()) {
+      const elapsed = now - pop.startTime;
+      const progress = elapsed / pop.duration;
+      const pos = worldToCanvas(pop.x, pop.y);
+
+      // Overshoot animation: scale 1 → 1.4 → 1.0
+      const overshoot = 1 + 0.4 * Math.sin(progress * Math.PI);
+      const radius = worldToPixels(0.6) * overshoot;
+      const alpha = 1 - progress;
+
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, alpha * 0.6);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  /** Render negative score flashes — red "-X" text floating up and fading. */
+  private renderNegativeFlashes(
+    ctx: CanvasRenderingContext2D,
+    worldToCanvas: (wx: number, wy: number) => { x: number; y: number },
+  ): void {
+    const now = performance.now();
+    for (const flash of this.getActiveNegativeFlashes()) {
+      const elapsed = now - flash.startTime;
+      const progress = elapsed / flash.duration;
+      const alpha = 1 - progress;
+      const yOffset = progress * -30;
+      const pos = worldToCanvas(flash.x, flash.y);
+
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, alpha);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      const fontSize = 14 + (1 - progress) * 4;
+      ctx.font = `bold ${fontSize}px sans-serif`;
+      ctx.fillStyle = '#ff4444';
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2;
+      const text = `-${flash.amount.toLocaleString()}`;
+      ctx.strokeText(text, pos.x, pos.y + yOffset);
+      ctx.fillText(text, pos.x, pos.y + yOffset);
+
+      ctx.restore();
+    }
+  }
+
   /** Clear all active effects. */
   clear(): void {
     this.shake = { intensity: 0, endTime: 0 };
     this.scorePops.length = 0;
     this.collisionFlashes.length = 0;
     this.slashEffects.length = 0;
+    this.growthPops.length = 0;
+    this.negativeFlashes.length = 0;
   }
 }
