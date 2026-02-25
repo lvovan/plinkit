@@ -11,7 +11,15 @@ import type {
 } from '@/types/contracts';
 import { BoardBuilder, type Board, type PuckBody } from './board-builder';
 import { BucketDetector } from './bucket-detector';
+<<<<<<< 010-persistent-puck-growth
 import { processGrowthQueue } from './puck-growth';
+=======
+import {
+  computePinPositions,
+  computeBucketBoundaries,
+  computeShoveZoneY,
+} from '@/config/board-geometry';
+>>>>>>> main
 
 let nextPuckId = 0;
 
@@ -91,10 +99,14 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
       isSettled: false,
       settledInBucket: null,
       createdAtTick: this.tick,
+<<<<<<< 010-persistent-puck-growth
       currentRadius: boardLayout.puckRadius,
       growthCount: 0,
       lastScoredBucket: null,
       scoreAwarded: 0,
+=======
+      bounceMultiplier: 1.0,
+>>>>>>> main
     };
 
     this.board.pucks.push(puckBody);
@@ -321,6 +333,81 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
     }
     this.board.pucks = [];
     this.oobTimers.clear();
+  }
+
+  rebuildBoard(config: GameConfig): void {
+    if (!this.board) {
+      throw new Error('World not created — call createWorld() first');
+    }
+
+    this.config = config;
+    const { boardLayout, physics: physicsConfig, shoveConfig } = config;
+
+    // Destroy old pins
+    for (const pin of this.board.pins) {
+      this.board.world.destroyBody(pin);
+    }
+    this.board.pins = [];
+
+    // Destroy old bucket walls
+    for (const wall of this.board.bucketWalls) {
+      this.board.world.destroyBody(wall);
+    }
+    this.board.bucketWalls = [];
+
+    // Create new pins
+    const pinPositions = computePinPositions(boardLayout);
+    for (const pos of pinPositions) {
+      const pin = this.board.world.createBody({
+        type: 'static',
+        position: planck.Vec2(pos.x, pos.y),
+      });
+      pin.createFixture({
+        shape: new planck.Circle(boardLayout.pinRadius),
+        restitution: physicsConfig.pinRestitution,
+        friction: physicsConfig.pinFriction,
+      });
+      pin.setUserData({ type: 'pin', row: pos.row, col: pos.col });
+      this.board.pins.push(pin);
+    }
+
+    // Create new bucket dividers
+    const buckets = computeBucketBoundaries(boardLayout);
+    const halfH = boardLayout.boardHeight / 2;
+    const bucketHeight = 1.5;
+    const bucketBottom = -halfH;
+    const bucketTop = bucketBottom + bucketHeight;
+
+    for (let i = 1; i < buckets.length; i++) {
+      const x = buckets[i].leftX;
+      const divider = this.board.world.createBody({ type: 'static' });
+      divider.createFixture({
+        shape: new planck.Edge(
+          planck.Vec2(x, bucketBottom),
+          planck.Vec2(x, bucketTop),
+        ),
+        restitution: 0.2,
+        friction: 0.3,
+      });
+      divider.setUserData({ type: 'bucketDivider', index: i });
+      this.board.bucketWalls.push(divider);
+    }
+
+    // Recompute shoveZoneY
+    this.board.shoveZoneY = computeShoveZoneY(boardLayout, shoveConfig.shoveZoneRowLimit);
+
+    // Rebuild BucketDetector
+    this.bucketDetector = new BucketDetector(boardLayout, physicsConfig, config.autoShove);
+
+    // Wake all pucks so they interact with new geometry
+    for (const puck of this.board.pucks) {
+      puck.body.setAwake(true);
+    }
+  }
+
+  getAllPucks(): PuckBody[] {
+    if (!this.board) return [];
+    return this.board.pucks;
   }
 
   destroy(): void {

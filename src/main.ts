@@ -1,5 +1,5 @@
 import { PhysicsSimulationImpl } from '@/physics/simulation';
-import { ScoringEngine } from '@/core/scoring';
+import { ScoringEngine, recalculateAllScores } from '@/core/scoring';
 import { GameLoop } from '@/core/game-loop';
 import { BasicInputManager } from '@/input/input-manager';
 import { CanvasRenderer } from '@/rendering/renderer';
@@ -16,6 +16,7 @@ import { initTelemetry, trackEvent, setTag } from '@/telemetry/clarity';
 import { showShoveGuidance, wasGuidanceShown } from '@/ui/shove-guidance';
 import { DEFAULT_GAME_CONFIG } from '@/config/game-config';
 import { computePinPositions, computeBucketBoundaries } from '@/config/board-geometry';
+import { detectDisplacedPucks, prepareSettling } from '@/physics/puck-settler';
 import type { RenderState, TurnResult, PlayerRegistration } from '@/types/contracts';
 import type { PuckStyle, Player, ScoringConfig } from '@/types/index';
 import type { SlowMotionState } from '@/types/index';
@@ -123,7 +124,11 @@ let slowMotionState: SlowMotionState = createSlowMotionState();
 let isFirstGame = true;
 let shoveOccurredInRound1 = false;
 let totalShoveCount = 0;
+<<<<<<< 010-persistent-puck-growth
 let pendingScoreRevocations: import('@/types/index').ScoreRevocationEvent[] = [];
+=======
+let isSettling = false;
+>>>>>>> main
 
 // ---- Audio rate limiter ----
 const recentSoundTimestamps: number[] = [];
@@ -232,6 +237,7 @@ let shoveZoneY = sim.getBoard()?.shoveZoneY ?? 0;
 
 const loop = new GameLoop({
   onStep() {
+    if (isSettling) return; // Physics stepping handled by settling loop during settling phase
     if (!puckDropped || !gameRunning) return;
 
     // Clear pending revocations from previous step
@@ -366,6 +372,7 @@ const loop = new GameLoop({
       // Calculate score with bounce multiplier
       const scoreBreakdown = scoring.calculateRoundScore(settled.bucketIndex, bounceCount);
 
+<<<<<<< 010-persistent-puck-growth
       // T051: Track score awarded on the PuckBody for revocation
       const board = sim.getBoard();
       if (board) {
@@ -373,6 +380,13 @@ const loop = new GameLoop({
         if (settledPuck) {
           settledPuck.scoreAwarded = scoreBreakdown.totalScore;
         }
+=======
+      // Stamp bounce multiplier on the puck body for persistence across rounds
+      const allPucks = sim.getAllPucks();
+      const settledPuck = allPucks.find(p => p.id === settled.puckId);
+      if (settledPuck) {
+        settledPuck.bounceMultiplier = scoreBreakdown.multiplier;
+>>>>>>> main
       }
 
       // Audio and visual feedback for bucket landing
@@ -489,8 +503,100 @@ async function transitionToNextRound(): Promise<void> {
     gameRunning = true;
   }
 
+<<<<<<< 010-persistent-puck-growth
   // Board layout is fixed (8-row, no randomization) — pucks persist across rounds
+=======
+  // Snapshot old bucket assignments for score delta detection
+  const oldBuckets = new Map<string, number | null>();
+  for (const puck of sim.getAllPucks()) {
+    oldBuckets.set(puck.id, puck.settledInBucket);
+  }
+
+  // Rebuild board with new random layout (pucks persist)
+  randomizeLayout();
+  sim.rebuildBoard(config);
+  shoveZoneY = sim.getBoard()?.shoveZoneY ?? 0;
+  rebuildRenderData();
+
+  // Detect displaced pucks and start settling phase
+  const board = sim.getBoard();
+  if (board) {
+    const displacedIds = detectDisplacedPucks(board, config);
+    if (displacedIds.length > 0) {
+      prepareSettling(board, displacedIds);
+      isSettling = true;
+
+      // Wait for all pucks to re-settle (physics runs visibly via game loop)
+      await waitForSettling();
+
+      isSettling = false;
+
+      // Recalculate scores after settling
+      const newScores = recalculateAllScores(sim.getAllPucks(), config.boardLayout.bucketScores);
+
+      // Update player scores and show delta indicators
+      const state = stateMachine.getState();
+      for (const player of state.players) {
+        const newScore = newScores.get(player.id) ?? 0;
+        const oldScore = player.score;
+        if (newScore !== oldScore) {
+          player.score = newScore;
+        }
+      }
+
+      // Show score delta indicators for pucks whose bucket changed
+      for (const puck of sim.getAllPucks()) {
+        if (!puck.isSettled) continue;
+        const oldBucket = oldBuckets.get(puck.id);
+        if (oldBucket !== puck.settledInBucket) {
+          const pos = puck.body.getPosition();
+          const oldScore = (oldBucket !== null && oldBucket !== undefined && oldBucket >= 0)
+            ? Math.floor(config.boardLayout.bucketScores[oldBucket] * puck.bounceMultiplier)
+            : 0;
+          const newScore = (puck.settledInBucket !== null && puck.settledInBucket >= 0)
+            ? Math.floor(config.boardLayout.bucketScores[puck.settledInBucket] * puck.bounceMultiplier)
+            : 0;
+          const delta = newScore - oldScore;
+          if (delta !== 0) {
+            const deltaText = delta > 0 ? `+${delta.toLocaleString()}` : `\u2212${Math.abs(delta).toLocaleString()}`;
+            const puckStyle = puckStyleMap.get(puck.id);
+            const color = puckStyle?.color ?? '#ffd700';
+            effects.addScoreDelta(pos.x, pos.y, deltaText, color);
+          }
+        }
+      }
+
+      overlays.updateScoreboard(state.players);
+    }
+  }
+
+>>>>>>> main
   startNextTurn();
+}
+
+/** Wait for all pucks to finish settling after pin relocation. */
+function waitForSettling(): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const maxSettlingFrames = 600; // ~10 seconds at 60fps safety limit
+    let frameCount = 0;
+
+    function checkSettled(): void {
+      frameCount++;
+      const allPucks = sim.getAllPucks();
+      const allSettled = allPucks.every(p => p.isSettled);
+
+      if (allSettled || frameCount >= maxSettlingFrames) {
+        resolve();
+        return;
+      }
+
+      // Step physics for settling (game loop renders each frame)
+      sim.step();
+      requestAnimationFrame(checkSettled);
+    }
+
+    requestAnimationFrame(checkSettled);
+  });
 }
 
 function startNextTurn(): void {

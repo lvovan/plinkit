@@ -18,6 +18,7 @@ export interface ScorePopEffect {
   duration: number;
 }
 
+<<<<<<< 010-persistent-puck-growth
 /** T038: Growth pop animation — scale-up with overshoot */
 export interface GrowthPopEffect {
   x: number;
@@ -31,6 +32,13 @@ export interface NegativeScoreFlash {
   x: number;
   y: number;
   amount: number;
+=======
+export interface ScoreDeltaEffect {
+  x: number;
+  y: number;
+  deltaText: string;
+  color: string;
+>>>>>>> main
   startTime: number;
   duration: number;
 }
@@ -42,6 +50,7 @@ export interface NegativeScoreFlash {
 export class EffectsManager {
   private shake: ShakeEffect = { intensity: 0, endTime: 0 };
   private scorePops: ScorePopEffect[] = [];
+  private scoreDeltas: ScoreDeltaEffect[] = [];
   private collisionFlashes: CollisionFlash[] = [];
   private slashEffects: SlashEffect[] = [];
   private growthPops: GrowthPopEffect[] = [];
@@ -95,6 +104,15 @@ export class EffectsManager {
     });
   }
 
+  /** Add a floating score delta indicator at the given world position. */
+  addScoreDelta(x: number, y: number, deltaText: string, color: string): void {
+    this.scoreDeltas.push({
+      x, y, deltaText, color,
+      startTime: performance.now(),
+      duration: 1200,
+    });
+  }
+
   /** Get active score pop effects for rendering. Removes expired ones. */
   getActiveScorePops(): ScorePopEffect[] {
     const now = performance.now();
@@ -116,6 +134,7 @@ export class EffectsManager {
     return this.slashEffects;
   }
 
+<<<<<<< 010-persistent-puck-growth
   /** Add a growth pop effect at the given position. */
   addGrowthPop(x: number, y: number): void {
     this.growthPops.push({
@@ -146,6 +165,13 @@ export class EffectsManager {
     const now = performance.now();
     this.negativeFlashes = this.negativeFlashes.filter(f => now - f.startTime < f.duration);
     return this.negativeFlashes;
+=======
+  /** Get active score delta effects. Removes expired ones. */
+  getActiveScoreDeltas(): ScoreDeltaEffect[] {
+    const now = performance.now();
+    this.scoreDeltas = this.scoreDeltas.filter(d => now - d.startTime < d.duration);
+    return this.scoreDeltas;
+>>>>>>> main
   }
 
   /**
@@ -160,8 +186,12 @@ export class EffectsManager {
     this.renderCollisionFlashes(ctx, worldToCanvas, worldToPixels);
     this.renderSlashEffects(ctx, worldToCanvas, worldToPixels);
     this.renderScorePops(ctx, worldToCanvas);
+<<<<<<< 010-persistent-puck-growth
     this.renderGrowthPops(ctx, worldToCanvas, worldToPixels);
     this.renderNegativeFlashes(ctx, worldToCanvas);
+=======
+    this.renderScoreDeltas(ctx, worldToCanvas);
+>>>>>>> main
   }
 
   /** Render collision flash effects — radial gradient + multiplier text. */
@@ -292,6 +322,7 @@ export class EffectsManager {
     }
   }
 
+<<<<<<< 010-persistent-puck-growth
   /** Render growth pop effects — expanding ring with overshoot. */
   private renderGrowthPops(
     ctx: CanvasRenderingContext2D,
@@ -332,10 +363,25 @@ export class EffectsManager {
       const alpha = 1 - progress;
       const yOffset = progress * -30;
       const pos = worldToCanvas(flash.x, flash.y);
+=======
+  /** Render score delta effects — floating "+X" / "−X" text with fade-out. */
+  private renderScoreDeltas(
+    ctx: CanvasRenderingContext2D,
+    worldToCanvas: (wx: number, wy: number) => { x: number; y: number },
+  ): void {
+    const now = performance.now();
+    for (const delta of this.getActiveScoreDeltas()) {
+      const elapsed = now - delta.startTime;
+      const progress = elapsed / delta.duration;
+      const alpha = 1 - progress;
+      const yOffset = progress * -40; // float upward
+      const pos = worldToCanvas(delta.x, delta.y);
+>>>>>>> main
 
       ctx.save();
       ctx.globalAlpha = Math.max(0, alpha);
       ctx.textAlign = 'center';
+<<<<<<< 010-persistent-puck-growth
       ctx.textBaseline = 'middle';
 
       const fontSize = 14 + (1 - progress) * 4;
@@ -346,6 +392,16 @@ export class EffectsManager {
       const text = `-${flash.amount.toLocaleString()}`;
       ctx.strokeText(text, pos.x, pos.y + yOffset);
       ctx.fillText(text, pos.x, pos.y + yOffset);
+=======
+
+      const fontSize = 14 + progress * 6;
+      ctx.font = `bold ${fontSize}px sans-serif`;
+      ctx.fillStyle = delta.color;
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2.5;
+      ctx.strokeText(delta.deltaText, pos.x, pos.y + yOffset);
+      ctx.fillText(delta.deltaText, pos.x, pos.y + yOffset);
+>>>>>>> main
 
       ctx.restore();
     }
@@ -355,6 +411,7 @@ export class EffectsManager {
   clear(): void {
     this.shake = { intensity: 0, endTime: 0 };
     this.scorePops.length = 0;
+    this.scoreDeltas.length = 0;
     this.collisionFlashes.length = 0;
     this.slashEffects.length = 0;
     this.growthPops.length = 0;

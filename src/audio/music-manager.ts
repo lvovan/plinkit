@@ -18,7 +18,7 @@ export class GameMusicManager implements MusicManager {
   private gameplayGain: GainNode | null = null;
   private currentTrack: MusicTrack | null = null;
   private muted = false;
-  private volume = 0.3;
+  private volume = 0.21;
   private initialized = false;
   private timeScale = 1.0;
 
