@@ -112,4 +112,33 @@ describe('Full Game Session Integration', () => {
       expect(action.tiedPlayers.length).toBe(2);
     }
   });
+
+  it('should handle an out-of-bounds turn with 0 score (T010)', () => {
+    const sm = new GameStateMachine();
+    const config = { ...DEFAULT_GAME_CONFIG, totalRounds: 1 };
+    sm.startSession(makePlayers(2), config);
+
+    // Player 1 goes out of bounds (0 score, bucket -1)
+    sm.startTurn();
+    sm.completeTurn(makeTurnResult(-1, 0));
+
+    // Player 1 should have 0 score
+    const stateAfterOob = sm.getState();
+    expect(stateAfterOob.players[0].score).toBe(0);
+
+    // Player 2 scores normally
+    sm.startTurn();
+    sm.completeTurn(makeTurnResult(2, 10000));
+
+    const action = sm.evaluateRoundEnd();
+    expect(action.type).toBe('winner');
+    if (action.type === 'winner') {
+      expect(action.winner.name).toBe('Player 2');
+      expect(action.winner.score).toBe(10000);
+    }
+
+    // Player 1 still has 0
+    const finalState = sm.getState();
+    expect(finalState.players[0].score).toBe(0);
+  });
 });

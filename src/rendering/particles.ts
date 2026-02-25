@@ -14,7 +14,7 @@ export interface Particle {
 
 /** Particle configuration per effect type */
 const PARTICLE_CONFIG: Record<ParticleType, { count: number; color: string; sizeMin: number; sizeMax: number; speedMin: number; speedMax: number }> = {
-  pinHit: { count: 6, color: '#ffffff', sizeMin: 1.5, sizeMax: 3, speedMin: 20, speedMax: 40 },
+  pinHit: { count: 3, color: '#ffffff', sizeMin: 1.5, sizeMax: 3, speedMin: 20, speedMax: 40 },
   bucketLand: { count: 15, color: '#ffd700', sizeMin: 2, sizeMax: 5, speedMin: 30, speedMax: 60 },
   shove: { count: 10, color: '#ff6b6b', sizeMin: 2, sizeMax: 4, speedMin: 25, speedMax: 50 },
 };

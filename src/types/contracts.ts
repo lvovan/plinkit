@@ -25,10 +25,16 @@ export interface SettledPuckEvent {
   bucketIndex: number;
 }
 
+export interface OutOfBoundsEvent {
+  puckId: string;
+  position: { x: number; y: number };
+}
+
 export interface PhysicsStepResult {
   tick: number;
   collisions: CollisionEvent[];
   settledPucks: SettledPuckEvent[];
+  outOfBoundsPucks: OutOfBoundsEvent[];
 }
 
 export interface PuckState {
@@ -157,6 +163,7 @@ export interface UIOverlayManager {
   updateTimer(secondsRemaining: number): void;
   updateShoveCounter(remaining: number, total: number): void;
   showResults(players: Player[], winner: Player | Player[]): Promise<ResultsAction>;
+  showOutOfBounds(): void;
   showFarewell(): void;
   hideAll(): void;
 }

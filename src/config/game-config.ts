@@ -3,12 +3,12 @@ import type { GameConfig, BoardLayout, PhysicsConfig, ShoveConfig } from '@/type
 // ---- Board Layout ----
 
 export const DEFAULT_BOARD_LAYOUT: BoardLayout = {
-  pinRows: 12,
-  bucketCount: 9,
-  pinSpacing: 1.0,       // 1 world unit between pin centers
-  pinRadius: 0.15,       // pin visual/collision radius
-  puckRadius: 0.25,      // puck visual/collision radius
-  bucketScores: [100, 500, 1000, 5000, 10000, 5000, 1000, 500, 100],
+  pinRows: 6,
+  bucketCount: 5,
+  pinSpacing: 2.0,        // 2 world units between pin centers
+  pinRadius: 0.30,       // pin visual/collision radius (scaled with spacing)
+  puckRadius: 0.5,       // puck visual/collision radius
+  bucketScores: [100, 1000, 10000, 1000, 100],
   boardWidth: 10.0,      // total board width in world units
   boardHeight: 14.0,     // total board height in world units
 };
@@ -37,7 +37,7 @@ export const DEFAULT_SHOVE_CONFIG: ShoveConfig = {
   minFlickSpeed: 200,          // px/s minimum pointer velocity
   flickSampleWindowMs: 80,     // velocity sampling window
   quantizationPrecision: 0.001,
-  shoveZoneRowLimit: 9,        // shoves allowed only above row 9
+  shoveZoneRowLimit: 5,        // shoves allowed only above row 5
 };
 
 // ---- Full Game Config ----
