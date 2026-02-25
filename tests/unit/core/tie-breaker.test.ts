@@ -27,7 +27,7 @@ describe('Tie-Breaker Logic', () => {
     boardLayout: {
       pinRows: 12, bucketCount: 9, pinSpacing: 1.0, pinRadius: 0.15, puckRadius: 0.25,
       bucketScores: [100, 500, 1000, 5000, 10000, 5000, 1000, 500, 100],
-      boardWidth: 10.0, boardHeight: 14.0,
+      boardWidth: 10.0, boardHeight: 14.0, pinsPerRow: 9,
     },
     physics: {
       gravity: { x: 0, y: -10 }, fixedTimestep: 1 / 60,
@@ -36,6 +36,7 @@ describe('Tie-Breaker Logic', () => {
       pinRestitution: 0.4, pinFriction: 0.05,
       stalledVelocityThreshold: 0.01, stalledTimeoutMs: 10000,
       angularDamping: 0.3, maxAngularVelocity: 20,
+      autoShoveVelocityThreshold: 0.1,
     },
     shoveConfig: {
       maxForceMagnitude: 5.0, minFlickSpeed: 200,
@@ -44,6 +45,7 @@ describe('Tie-Breaker Logic', () => {
     },
     scoring: { bounceMultiplierRate: 1.15, bounceMultiplierCap: 10.0 },
     slowMotion: { targetScale: 0.3, enterDuration: 0.25, holdDuration: 1.5, exitDuration: 0.4 },
+    autoShove: { velocityThreshold: 0.1, stallTicks: 180, impulseMagnitude: 1.5, maxAttempts: 3, warningDurationMs: 300 },
     turnTimerSeconds: 15,
     maxTieBreakers: 10,
   };

@@ -165,11 +165,12 @@ export class CanvasRenderer implements Renderer {
       ctx.lineTo(bottom.x + w, bottom.y);
       ctx.stroke();
 
-      // Score label
+      // Score label — font size scales with bucket width for proportional layouts
       const centerX = left.x + w / 2;
       const labelY = bottom.y - 4;
       ctx.fillStyle = '#ffd700';
-      ctx.font = `${Math.max(10, this.worldToPixels(0.35))}px sans-serif`;
+      const fontSize = Math.max(10, this.worldToPixels(Math.min(0.45, bucket.width * 0.15)));
+      ctx.font = `${fontSize}px sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';
       ctx.fillText(this.formatScore(bucket.score), centerX, labelY);
@@ -215,6 +216,19 @@ export class CanvasRenderer implements Renderer {
     for (const puck of state.pucks) {
       const pos = this.worldToCanvas(puck.x, puck.y);
       const r = this.worldToPixels(puck.radius);
+
+      // Auto-shove warning pulse: glow when stall progress > 90% (last 0.3s)
+      if (puck.autoShoveProgress && puck.autoShoveProgress > 0.9) {
+        const pulsePhase = (puck.autoShoveProgress - 0.9) * 10; // 0–1
+        const pulseAlpha = 0.3 + 0.4 * Math.sin(pulsePhase * Math.PI * 6); // rapid pulse
+        ctx.save();
+        ctx.globalAlpha = pulseAlpha;
+        ctx.fillStyle = '#ff4444';
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, r * 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
 
       // Main fill
       ctx.fillStyle = puck.style.color;

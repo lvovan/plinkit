@@ -1,6 +1,29 @@
 import type { PlayerRegistration } from '@/types/contracts';
 import { PUCK_PALETTE } from '@/types/index';
 
+const STORAGE_KEY = 'plinkit_player_names';
+
+/** Load saved player names from localStorage. Returns empty array on failure. */
+function loadSavedNames(): string[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((n): n is string => typeof n === 'string') : [];
+  } catch {
+    return []; // silent degradation — localStorage unavailable or corrupted
+  }
+}
+
+/** Save player names to localStorage. Fails silently. */
+function saveNames(names: string[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(names));
+  } catch {
+    // silent degradation — storage full or unavailable
+  }
+}
+
 /**
  * Registration screen overlay.
  * Shown during the registration phase to collect player names.
@@ -69,6 +92,23 @@ export class RegistrationOverlay {
       // Add 1 initial input (more can be added)
       addInput();
 
+      // Pre-fill with saved names from localStorage
+      const savedNames = loadSavedNames();
+      if (savedNames.length > 0) {
+        // Add additional inputs for extra saved names
+        for (let i = 1; i < savedNames.length && playerCount < maxPlayers; i++) {
+          addInput();
+        }
+        // Fill in saved values
+        const inputs = this.overlay!.querySelectorAll('.player-name') as NodeListOf<HTMLInputElement>;
+        savedNames.forEach((name, i) => {
+          if (i < inputs.length) {
+            inputs[i].value = name;
+          }
+        });
+        updateStartBtn();
+      }
+
       // Event listeners
       addBtn.addEventListener('click', addInput);
       inputsDiv.addEventListener('input', updateStartBtn);
@@ -76,9 +116,11 @@ export class RegistrationOverlay {
       startBtn.addEventListener('click', () => {
         const inputs = this.overlay!.querySelectorAll('.player-name') as NodeListOf<HTMLInputElement>;
         const registrations: PlayerRegistration[] = [];
+        const allNames: string[] = [];
 
         inputs.forEach((input, i) => {
           const name = input.value.trim();
+          allNames.push(name);
           if (name.length > 0) {
             registrations.push({
               name,
@@ -88,6 +130,7 @@ export class RegistrationOverlay {
         });
 
         if (registrations.length >= 1) {
+          saveNames(allNames);
           this.hide();
           resolve(registrations);
         }
