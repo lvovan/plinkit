@@ -68,6 +68,37 @@ describe('Physics Determinism', () => {
     }
   });
 
+  it('T012: same drop position produces same final angle across 10 runs', () => {
+    const dropX = -1.5; // Off-center to generate rotation
+    const finalAngles: number[] = [];
+
+    for (let run = 0; run < 10; run++) {
+      const sim = new PhysicsSimulationImpl();
+      sim.createWorld(DEFAULT_GAME_CONFIG);
+
+      sim.dropPuck(dropX, 'player1');
+
+      for (let tick = 0; tick < 500; tick++) {
+        sim.step();
+      }
+
+      const snapshot = sim.getSnapshot();
+      if (snapshot.pucks.length > 0) {
+        finalAngles.push(snapshot.pucks[0].angle);
+      }
+
+      sim.destroy();
+    }
+
+    expect(finalAngles.length).toBe(10);
+    // All runs should produce identical angle
+    for (let i = 1; i < finalAngles.length; i++) {
+      expect(finalAngles[i]).toBeCloseTo(finalAngles[0], 10);
+    }
+    // With rotation enabled, angle should be non-zero
+    expect(finalAngles[0]).not.toBe(0);
+  });
+
   it('should produce different buckets for different drop positions', () => {
     // We can't guarantee different positions always hit different buckets,
     // but widely separated positions should tend to different areas

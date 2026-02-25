@@ -342,6 +342,7 @@ const loop = new GameLoop({
         radius: layout.puckRadius,
         style: puckStyleMap.get(p.id) ?? currentPuckStyle,
         settled: p.settled,
+        angle: p.angle,
       })),
       buckets: bucketRenderData,
       shoveZoneY,

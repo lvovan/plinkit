@@ -21,12 +21,14 @@ export const DEFAULT_PHYSICS_CONFIG: PhysicsConfig = {
   velocityIterations: 8,
   positionIterations: 3,
   puckRestitution: 0.5,
-  puckFriction: 0.1,
+  puckFriction: 0.4,
   puckDensity: 1.0,
   pinRestitution: 0.4,
-  pinFriction: 0.05,
+  pinFriction: 0.3,
   stalledVelocityThreshold: 0.01,
   stalledTimeoutMs: 10000,
+  angularDamping: 3.0,
+  maxAngularVelocity: 12.57,
 };
 
 // ---- Shove Config ----
@@ -38,6 +40,7 @@ export const DEFAULT_SHOVE_CONFIG: ShoveConfig = {
   flickSampleWindowMs: 80,     // velocity sampling window
   quantizationPrecision: 0.001,
   shoveZoneRowLimit: 5,        // shoves allowed only above row 5
+  shoveOffsetFraction: 0.25,   // 25% of puck radius for off-center shove spin
 };
 
 // ---- Scoring Config ----

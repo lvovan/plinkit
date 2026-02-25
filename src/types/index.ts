@@ -67,6 +67,10 @@ export interface PhysicsConfig {
   pinFriction: number;
   stalledVelocityThreshold: number;
   stalledTimeoutMs: number;
+  /** Spin decay rate applied to puck bodies. 3.0 ≈ ~1s decay at 60 Hz. */
+  angularDamping: number;
+  /** Angular velocity cap in rad/s. 12.57 ≈ 2 rotations/sec (4π). */
+  maxAngularVelocity: number;
 }
 
 export interface ShoveConfig {
@@ -76,6 +80,8 @@ export interface ShoveConfig {
   flickSampleWindowMs: number;
   quantizationPrecision: number;
   shoveZoneRowLimit: number;
+  /** Fraction of puck radius used as off-center offset for shove impulse (0–1). */
+  shoveOffsetFraction: number;
 }
 
 export interface GameConfig {
