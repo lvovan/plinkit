@@ -32,6 +32,7 @@
   },
   "homepage": "https://github.com/lvovan/plinkit#readme",
   "dependencies": {
+    "@microsoft/clarity": "^1.0.2",
     "planck": "^1.4.3"
   },
   "devDependencies": {

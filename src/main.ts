@@ -10,6 +10,7 @@ import { GameAudioManager } from '@/audio/audio-manager';
 import { GameMusicManager } from '@/audio/music-manager';
 import { EffectsManager } from '@/rendering/effects';
 import { VisibilityHandler } from '@/core/visibility';
+import { initTelemetry, trackEvent, setTag } from '@/telemetry/clarity';
 import { DEFAULT_GAME_CONFIG } from '@/config/game-config';
 import { computePinPositions, computeBucketBoundaries } from '@/config/board-geometry';
 import type { RenderState, TurnResult, PlayerRegistration } from '@/types/contracts';
@@ -239,6 +240,11 @@ const loop = new GameLoop({
       const state = stateMachine.getState();
       overlays.updateScoreboard(state.players);
 
+      // Telemetry: track turn completion (out-of-bounds)
+      trackEvent('turn_complete');
+      setTag('lastBucketScore', '0');
+      setTag('bounceCount', String(bounceCount));
+
       const roundAction = stateMachine.evaluateRoundEnd();
 
       puckDropped = false;
@@ -292,6 +298,11 @@ const loop = new GameLoop({
       bounceCount = 0; // Reset for next turn
       const state = stateMachine.getState();
       overlays.updateScoreboard(state.players);
+
+      // Telemetry: track turn completion (bucket landed)
+      trackEvent('turn_complete');
+      setTag('lastBucketScore', String(scoreBreakdown.totalScore));
+      setTag('bounceCount', String(turnResult.bounceCount));
 
       // Check if round is complete
       const roundAction = stateMachine.evaluateRoundEnd();
@@ -368,11 +379,18 @@ function startNextTurn(): void {
 }
 
 async function handleGameEnd(players: Player[], winner: Player | Player[], isTieBreaker: boolean): Promise<void> {
+  // Telemetry: tag game end with results
+  trackEvent('game_end');
+  const winnerArr = Array.isArray(winner) ? winner : [winner];
+  setTag('winningScore', String(Math.max(...winnerArr.map(w => w.score))));
+  setTag('totalRounds', String(stateMachine.getState().currentRound));
+
   // Crossfade back to lobby music when showing results
   musicManager.crossfadeTo('lobby');
   const action = await overlays.showResults(players, winner, isTieBreaker);
 
   if (action === 'playAgain') {
+    trackEvent('replay');
     stateMachine.resetForReplay();
     sim.clearPucks();
     puckStyleMap.clear();
@@ -381,6 +399,7 @@ async function handleGameEnd(players: Player[], winner: Player | Player[], isTie
     startNextTurn();
     overlays.updateScoreboard(stateMachine.getState().players);
   } else if (action === 'newPlayers') {
+    trackEvent('new_session');
     stateMachine.resetFull();
     sim.clearPucks();
     puckStyleMap.clear();
@@ -426,6 +445,10 @@ async function startGame(): Promise<void> {
 
   stateMachine.startSession(registrations, config);
 
+  // Telemetry: tag game start with player count
+  trackEvent('game_start');
+  setTag('playerCount', String(registrations.length));
+
   // Start playing
   const state = stateMachine.getState();
   overlays.updateScoreboard(state.players);
@@ -438,6 +461,7 @@ async function startGame(): Promise<void> {
 }
 
 // ---- Launch ----
+initTelemetry();
 loop.start();
 startGame();
 
