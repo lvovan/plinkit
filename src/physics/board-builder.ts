@@ -25,6 +25,8 @@ export interface PuckBody {
   isSettled: boolean;
   settledInBucket: number | null;
   createdAtTick: number;
+  /** Bounce multiplier at settlement. Default 1.0. Preserved across rounds for score recalculation. */
+  bounceMultiplier: number;
 }
 
 /**

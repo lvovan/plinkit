@@ -1,4 +1,5 @@
 import type { BoardLayout, Player, ScoringConfig, ScoreBreakdown } from '@/types/index';
+import type { PuckBody } from '@/physics/board-builder';
 
 /**
  * Computes scores for bucket indices based on the board layout's bucket scores.
@@ -52,4 +53,31 @@ export class ScoringEngine {
     const totalScore = Math.floor(baseScore * multiplier);
     return { baseScore, bounceCount, multiplier, totalScore };
   }
+}
+
+/**
+ * Recalculate total scores for all players from their settled pucks.
+ * Score per puck = floor(bucketScores[bucket] × puck.bounceMultiplier).
+ * Unsettled pucks (off board, in flight) contribute 0.
+ *
+ * @returns Map of playerId → total score
+ */
+export function recalculateAllScores(
+  pucks: ReadonlyArray<Pick<PuckBody, 'playerId' | 'isSettled' | 'settledInBucket' | 'bounceMultiplier'>>,
+  bucketScores: readonly number[],
+): Map<string, number> {
+  const scores = new Map<string, number>();
+
+  for (const puck of pucks) {
+    if (!scores.has(puck.playerId)) {
+      scores.set(puck.playerId, 0);
+    }
+
+    if (puck.isSettled && puck.settledInBucket !== null && puck.settledInBucket >= 0 && puck.settledInBucket < bucketScores.length) {
+      const puckScore = Math.floor(bucketScores[puck.settledInBucket] * puck.bounceMultiplier);
+      scores.set(puck.playerId, scores.get(puck.playerId)! + puckScore);
+    }
+  }
+
+  return scores;
 }
