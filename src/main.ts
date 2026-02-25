@@ -101,6 +101,7 @@ let shovesUsed = 0;
 let shovesDisabled = false;
 let gameRunning = false;
 let bounceCount = 0;
+const puckStyleMap = new Map<string, PuckStyle>();
 
 // ---- Audio rate limiter ----
 const recentSoundTimestamps: number[] = [];
@@ -236,6 +237,8 @@ const loop = new GameLoop({
         shoves: [],
         bucketIndex: -1,
         scoreEarned: 0,
+        bounceCount,
+        scoreBreakdown: { baseScore: 0, bounceCount, multiplier: 1, totalScore: 0 },
         wasTimeout: false,
       };
 

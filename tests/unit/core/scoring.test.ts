@@ -54,7 +54,7 @@ describe('ScoringEngine', () => {
   describe('calculateRoundScore()', () => {
     it('should return multiplier 1.0 and totalScore equals baseScore for 0 bounces', () => {
       const engine = new ScoringEngine(DEFAULT_GAME_CONFIG.boardLayout, DEFAULT_GAME_CONFIG.scoring);
-      const result = engine.calculateRoundScore(4, 0); // bucket 4 = 10000
+      const result = engine.calculateRoundScore(2, 0); // bucket 2 = 10000 (center)
       expect(result.baseScore).toBe(10000);
       expect(result.bounceCount).toBe(0);
       expect(result.multiplier).toBe(1.0);
@@ -88,22 +88,22 @@ describe('ScoringEngine', () => {
 
     it('should always return totalScore as floor(baseScore × multiplier)', () => {
       const engine = new ScoringEngine(DEFAULT_GAME_CONFIG.boardLayout, DEFAULT_GAME_CONFIG.scoring);
-      // bucket 1 = 500, 3 bounces → 1.15^3 = 1.521..., 500 × 1.521 = 760.54 → 760
+      // bucket 1 = 1000, 3 bounces → 1.15^3 = 1.521..., 1000 × 1.521 = 1521.67 → 1521
       const result = engine.calculateRoundScore(1, 3);
-      expect(result.totalScore).toBe(Math.floor(500 * result.multiplier));
+      expect(result.totalScore).toBe(Math.floor(1000 * result.multiplier));
       expect(Number.isInteger(result.totalScore)).toBe(true);
     });
 
     it('should throw RangeError for invalid bucketIndex', () => {
       const engine = new ScoringEngine(DEFAULT_GAME_CONFIG.boardLayout, DEFAULT_GAME_CONFIG.scoring);
       expect(() => engine.calculateRoundScore(-1, 5)).toThrow(RangeError);
-      expect(() => engine.calculateRoundScore(9, 5)).toThrow(RangeError);
+      expect(() => engine.calculateRoundScore(DEFAULT_GAME_CONFIG.boardLayout.bucketCount, 5)).toThrow(RangeError);
     });
 
     it('should satisfy SC-003: 10 bounces scores at least 2× more than 5 bounces', () => {
       const engine = new ScoringEngine(DEFAULT_GAME_CONFIG.boardLayout, DEFAULT_GAME_CONFIG.scoring);
-      const result5 = engine.calculateRoundScore(4, 5);
-      const result10 = engine.calculateRoundScore(4, 10);
+      const result5 = engine.calculateRoundScore(2, 5);
+      const result10 = engine.calculateRoundScore(2, 10);
       expect(result10.totalScore).toBeGreaterThanOrEqual(result5.totalScore * 2);
     });
   });

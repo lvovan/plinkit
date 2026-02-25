@@ -149,9 +149,9 @@ describe('Full Game Session Integration', () => {
     };
     sm.completeTurn(p1Result);
 
-    // Player 2: bucket 4 (center, base 10000) with 5 bounces
+    // Player 2: bucket 2 (center, base 10000) with 5 bounces
     const p2BounceCount = 5;
-    const p2Breakdown = scoring.calculateRoundScore(4, p2BounceCount);
+    const p2Breakdown = scoring.calculateRoundScore(2, p2BounceCount);
     expect(p2Breakdown.baseScore).toBe(10000);
     expect(p2Breakdown.bounceCount).toBe(5);
 

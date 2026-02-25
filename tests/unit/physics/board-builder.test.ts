@@ -27,8 +27,7 @@ describe('BoardBuilder', () => {
 
     it('should create bucket divider bodies', () => {
       const board = builder.build(DEFAULT_GAME_CONFIG);
-      // 9 buckets → 10 dividers (including outer edges) or 8 inner dividers
-      // We need at least bucketCount - 1 inner dividers
+      // bucketCount buckets → at least bucketCount - 1 inner dividers
       expect(board.bucketWalls.length).toBeGreaterThanOrEqual(
         DEFAULT_GAME_CONFIG.boardLayout.bucketCount - 1
       );
