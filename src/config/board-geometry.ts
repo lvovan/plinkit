@@ -20,6 +20,8 @@ export function computePinPositions(layout: BoardLayout): PinPosition[] {
 
   for (let row = 0; row < pinRows; row++) {
     // Number of pins per row: alternate between bucketCount and bucketCount-1
+    // Odd rows have one fewer pin; centering them naturally places pins
+    // halfway between the even-row pins (staggered / "en quinconce").
     const pinsInRow = row % 2 === 0 ? bucketCount : bucketCount - 1;
     const rowWidth = (pinsInRow - 1) * pinSpacing;
 

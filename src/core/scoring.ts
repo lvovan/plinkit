@@ -1,13 +1,16 @@
-import type { BoardLayout, Player } from '@/types/index';
+import type { BoardLayout, Player, ScoringConfig, ScoreBreakdown } from '@/types/index';
 
 /**
  * Computes scores for bucket indices based on the board layout's bucket scores.
+ * Supports bounce-based exponential scoring multiplier.
  */
 export class ScoringEngine {
   private bucketScores: readonly number[];
+  private scoringConfig: ScoringConfig;
 
-  constructor(boardLayout: BoardLayout) {
+  constructor(boardLayout: BoardLayout, scoringConfig?: ScoringConfig) {
     this.bucketScores = boardLayout.bucketScores;
+    this.scoringConfig = scoringConfig ?? { bounceMultiplierRate: 1.15, bounceMultiplierCap: 10.0 };
   }
 
   /**
@@ -32,5 +35,21 @@ export class ScoringEngine {
     if (players.length === 0) return [];
     const maxScore = Math.max(...players.map(p => p.score));
     return players.filter(p => p.score === maxScore);
+  }
+
+  /**
+   * Calculate round score with bounce multiplier.
+   * multiplier = min(rate^bounceCount, cap)
+   * totalScore = floor(baseScore × multiplier)
+   * @throws RangeError if bucketIndex is out of bounds
+   */
+  calculateRoundScore(bucketIndex: number, bounceCount: number): ScoreBreakdown {
+    const baseScore = this.getScoreForBucket(bucketIndex);
+    const multiplier = Math.min(
+      this.scoringConfig.bounceMultiplierRate ** bounceCount,
+      this.scoringConfig.bounceMultiplierCap,
+    );
+    const totalScore = Math.floor(baseScore * multiplier);
+    return { baseScore, bounceCount, multiplier, totalScore };
   }
 }

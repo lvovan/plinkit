@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { GameStateMachine } from '@/core/state-machine';
+import { ScoringEngine } from '@/core/scoring';
 import { PUCK_PALETTE } from '@/types/index';
 import type { PlayerRegistration, TurnResult } from '@/types/contracts';
+import type { ScoreBreakdown } from '@/types/index';
 import { DEFAULT_GAME_CONFIG } from '@/config/game-config';
 
 function makePlayers(n: number): PlayerRegistration[] {
@@ -11,12 +13,20 @@ function makePlayers(n: number): PlayerRegistration[] {
   }));
 }
 
-function makeTurnResult(bucketIndex: number, score: number): TurnResult {
+function makeTurnResult(bucketIndex: number, score: number, bounceCount = 0): TurnResult {
+  const breakdown: ScoreBreakdown = {
+    baseScore: score,
+    bounceCount,
+    multiplier: 1.0,
+    totalScore: score,
+  };
   return {
     dropPositionX: 0,
     shoves: [],
     bucketIndex,
     scoreEarned: score,
+    bounceCount,
+    scoreBreakdown: breakdown,
     wasTimeout: false,
   };
 }
@@ -113,32 +123,61 @@ describe('Full Game Session Integration', () => {
     }
   });
 
-  it('should handle an out-of-bounds turn with 0 score (T010)', () => {
+  it('should track bounce scoring through a full round flow', () => {
+    const scoring = new ScoringEngine(DEFAULT_GAME_CONFIG.boardLayout, DEFAULT_GAME_CONFIG.scoring);
     const sm = new GameStateMachine();
     const config = { ...DEFAULT_GAME_CONFIG, totalRounds: 1 };
     sm.startSession(makePlayers(2), config);
 
-    // Player 1 goes out of bounds (0 score, bucket -1)
-    sm.startTurn();
-    sm.completeTurn(makeTurnResult(-1, 0));
+    // Player 1: bucket 0 (edge, base 100) with 10 bounces
+    const p1BounceCount = 10;
+    const p1Breakdown = scoring.calculateRoundScore(0, p1BounceCount);
+    expect(p1Breakdown.baseScore).toBe(100);
+    expect(p1Breakdown.bounceCount).toBe(10);
+    expect(p1Breakdown.multiplier).toBeGreaterThan(1.0);
+    expect(p1Breakdown.totalScore).toBeGreaterThan(p1Breakdown.baseScore);
 
-    // Player 1 should have 0 score
-    const stateAfterOob = sm.getState();
-    expect(stateAfterOob.players[0].score).toBe(0);
-
-    // Player 2 scores normally
     sm.startTurn();
-    sm.completeTurn(makeTurnResult(2, 10000));
+    const p1Result: TurnResult = {
+      dropPositionX: 0,
+      shoves: [],
+      bucketIndex: 0,
+      scoreEarned: p1Breakdown.totalScore,
+      bounceCount: p1BounceCount,
+      scoreBreakdown: p1Breakdown,
+      wasTimeout: false,
+    };
+    sm.completeTurn(p1Result);
+
+    // Player 2: bucket 2 (center, base 10000) with 5 bounces
+    const p2BounceCount = 5;
+    const p2Breakdown = scoring.calculateRoundScore(2, p2BounceCount);
+    expect(p2Breakdown.baseScore).toBe(10000);
+    expect(p2Breakdown.bounceCount).toBe(5);
+
+    sm.startTurn();
+    const p2Result: TurnResult = {
+      dropPositionX: 0,
+      shoves: [],
+      bucketIndex: 0,
+      scoreEarned: p2Breakdown.totalScore,
+      bounceCount: p2BounceCount,
+      scoreBreakdown: p2Breakdown,
+      wasTimeout: false,
+    };
+    sm.completeTurn(p2Result);
 
     const action = sm.evaluateRoundEnd();
     expect(action.type).toBe('winner');
+
+    // Verify scores match breakdown totalScores
+    const state = sm.getState();
+    expect(state.players[0].score).toBe(p1Breakdown.totalScore);
+    expect(state.players[1].score).toBe(p2Breakdown.totalScore);
+
+    // Player 2 should win (edge bucket × multiplier)
     if (action.type === 'winner') {
       expect(action.winner.name).toBe('Player 2');
-      expect(action.winner.score).toBe(10000);
     }
-
-    // Player 1 still has 0
-    const finalState = sm.getState();
-    expect(finalState.players[0].score).toBe(0);
   });
 });

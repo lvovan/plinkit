@@ -85,6 +85,7 @@ export interface GameConfig {
   shoveConfig: ShoveConfig;
   turnTimerSeconds: number;
   maxTieBreakers: number;
+  scoring: ScoringConfig;
 }
 
 // ---- Turn Records ----
@@ -150,4 +151,64 @@ export interface BucketBoundary {
   rightX: number;
   centerX: number;
   score: number;
+}
+
+// ---- Scoring ----
+
+/** Configuration for bounce-based exponential scoring */
+export interface ScoringConfig {
+  /** Exponential rate per bounce. Must be > 1.0. Default: 1.15 */
+  bounceMultiplierRate: number;
+  /** Maximum multiplier cap. Must be >= 1.0. Default: 10.0 */
+  bounceMultiplierCap: number;
+}
+
+/** Full breakdown of a round's score calculation */
+export interface ScoreBreakdown {
+  /** Score from the bucket index lookup */
+  baseScore: number;
+  /** Total collisions during the round */
+  bounceCount: number;
+  /** min(rate^bounces, cap), always >= 1.0 */
+  multiplier: number;
+  /** floor(baseScore × multiplier) */
+  totalScore: number;
+}
+
+// ---- Visual Effects ----
+
+/** A time-limited radial flash effect at a collision point */
+export interface CollisionFlash {
+  x: number;
+  y: number;
+  startTime: number;
+  /** Lifetime in ms. Default: 250 */
+  duration: number;
+  /** Current bounce multiplier as text (e.g., "1.3×") */
+  multiplierText: string;
+}
+
+/** A directional slash animation triggered on successful shove */
+export interface SlashEffect {
+  originX: number;
+  originY: number;
+  /** Normalized X component of shove direction */
+  directionX: number;
+  /** Normalized Y component of shove direction */
+  directionY: number;
+  /** Force magnitude of the shove */
+  magnitude: number;
+  startTime: number;
+  /** Lifetime in ms. Default: 400 */
+  duration: number;
+}
+
+/** State for the pre-drop visual helper (ghost puck) */
+export interface DropIndicator {
+  /** Current horizontal position in world coordinates */
+  x: number;
+  /** Player's puck visual style */
+  style: PuckStyle;
+  /** Whether the indicator is showing */
+  visible: boolean;
 }

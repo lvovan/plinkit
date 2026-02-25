@@ -34,7 +34,7 @@
 - [x] T004 [P] Define all shared types and enums from data-model.md (GameSession, Player, PuckStyle, GameConfig, BoardLayout, PhysicsConfig, ShoveConfig, Turn, ShoveVector, GamePhase, TurnPhase, PuckPattern) in src/types/index.ts
 - [x] T005 [P] Define all module contract interfaces from contracts/internal-modules.md (PhysicsSimulation, InputManager, Renderer, AudioManager, GameStateMachine, UIOverlayManager and supporting types) in src/types/contracts.ts
 - [x] T006 Create game configuration defaults (GameConfig with BoardLayout 12×9, PhysicsConfig gravity/restitution/friction, ShoveConfig max 2 shoves, bucket scores [100,500,1000,5000,10000,5000,1000,500,100]) in src/config/game-config.ts
-- [x] T007 Implement board geometry computation (pin positions with staggered offsets, bucket boundaries, shove-zone Y coordinate) from BoardLayout in src/config/board-geometry.ts
+- [x] T007 Implement board geometry computation (pin positions in quinconce layout — odd rows have one fewer pin, centered — bucket boundaries, shove-zone Y coordinate) from BoardLayout in src/config/board-geometry.ts
 
 **Checkpoint**: Foundation ready — all types, contracts, and config available for user story implementation
 

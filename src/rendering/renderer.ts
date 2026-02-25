@@ -1,5 +1,6 @@
 import type { Renderer, RenderState, ParticleType } from '@/types/contracts';
 import type { BoardLayout } from '@/types/index';
+import { EffectsManager } from './effects';
 
 /**
  * Canvas 2D renderer for the Plinko board.
@@ -22,6 +23,14 @@ export class CanvasRenderer implements Renderer {
 
   // Particles
   private particles: Particle[] = [];
+
+  // Effects manager for flashes, slashes, score pops
+  private effects: EffectsManager | null = null;
+
+  /** Set the effects manager for rendering visual effects. */
+  setEffectsManager(effects: EffectsManager): void {
+    this.effects = effects;
+  }
 
   init(canvas: HTMLCanvasElement, layout: BoardLayout): void {
     this.canvas = canvas;
@@ -159,6 +168,42 @@ export class CanvasRenderer implements Renderer {
       ctx.fillText(this.formatScore(bucket.score), centerX, labelY);
     }
 
+    // Draw ghost puck and guide line (drop indicator)
+    if (state.dropIndicator && this.layout) {
+      const topOfBoardY = this.layout.boardHeight / 2;
+      const ghostPos = this.worldToCanvas(state.dropIndicator.x, topOfBoardY);
+      const ghostR = this.worldToPixels(this.layout.puckRadius);
+
+      // T020: Dashed vertical guide line from ghost puck downward
+      ctx.save();
+      ctx.globalAlpha = 0.15;
+      ctx.strokeStyle = state.dropIndicator.style.color;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([8, 10]);
+      const guideBottom = this.worldToCanvas(state.dropIndicator.x, -topOfBoardY);
+      ctx.beginPath();
+      ctx.moveTo(ghostPos.x, ghostPos.y + ghostR);
+      ctx.lineTo(guideBottom.x, guideBottom.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+
+      // T019: Ghost puck at 40% opacity
+      ctx.save();
+      ctx.globalAlpha = 0.4;
+      ctx.fillStyle = state.dropIndicator.style.color;
+      ctx.beginPath();
+      ctx.arc(ghostPos.x, ghostPos.y, ghostR, 0, Math.PI * 2);
+      ctx.fill();
+      this.drawPuckPattern(ctx, ghostPos.x, ghostPos.y, ghostR, state.dropIndicator.style.pattern);
+      ctx.strokeStyle = '#ffffff88';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(ghostPos.x, ghostPos.y, ghostR, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     // Draw pucks
     for (const puck of state.pucks) {
       const pos = this.worldToCanvas(puck.x, puck.y);
@@ -184,6 +229,15 @@ export class CanvasRenderer implements Renderer {
     // Draw particles
     this.updateParticles(ctx);
 
+    // Render effects (collision flashes, slashes, score pops)
+    if (this.effects) {
+      this.effects.renderEffects(
+        ctx,
+        (wx: number, wy: number) => this.worldToCanvas(wx, wy),
+        (size: number) => this.worldToPixels(size),
+      );
+    }
+
     ctx.restore();
   }
 
@@ -193,7 +247,9 @@ export class CanvasRenderer implements Renderer {
   }
 
   emitParticles(x: number, y: number, type: ParticleType): void {
-    const count = type === 'bucketLand' ? 15 : 8;
+    // Only emit particles for bucket landings — collision/shove particles removed
+    if (type !== 'bucketLand') return;
+    const count = 15;
     for (let i = 0; i < count; i++) {
       const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
       const speed = 30 + Math.random() * 50;
@@ -203,7 +259,7 @@ export class CanvasRenderer implements Renderer {
         vy: Math.sin(angle) * speed,
         life: 1.0,
         decay: 0.02 + Math.random() * 0.02,
-        color: type === 'pinHit' ? '#ffffff' : type === 'bucketLand' ? '#ffd700' : '#ff6b6b',
+        color: '#ffd700',
         size: 2 + Math.random() * 3,
       });
     }

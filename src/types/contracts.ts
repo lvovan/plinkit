@@ -9,6 +9,7 @@ import type {
   PuckStyle,
   ShoveVector,
   BoardLayout,
+  ScoreBreakdown,
 } from './index';
 
 // ---- Contract 1: PhysicsSimulation ----
@@ -85,6 +86,11 @@ export interface RenderState {
   shoveZoneY: number;
   activePuckId: string | null;
   interpolationAlpha: number;
+  /** When present, renderer draws a ghost puck at this position. */
+  dropIndicator?: {
+    x: number;
+    style: PuckStyle;
+  };
 }
 
 export type ParticleType = 'pinHit' | 'bucketLand' | 'shove';
@@ -135,6 +141,10 @@ export interface TurnResult {
   bucketIndex: number;
   scoreEarned: number;
   wasTimeout: boolean;
+  /** Total number of bounces during this turn. */
+  bounceCount: number;
+  /** Full scoring breakdown with multiplier. */
+  scoreBreakdown: ScoreBreakdown;
 }
 
 export interface PlayerRegistration {

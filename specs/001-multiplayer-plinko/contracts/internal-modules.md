@@ -88,6 +88,12 @@ interface InputManager {
   /** Stop listening and clean up. */
   detach(): void;
 
+  /** Set the board width in world units (used for coordinate transform). */
+  setWorldWidth(width: number): void;
+
+  /** Set the board height in world units (used for coordinate transform). */
+  setBoardHeight(height: number): void;
+
   /** Register a callback for when the player selects a drop position. */
   onDropPositionChange(cb: (x: number) => void): void;
 
@@ -101,6 +107,11 @@ interface InputManager {
   setFlickEnabled(enabled: boolean): void;
 }
 ```
+
+**Coordinate transform contract**: `canvasToWorldX` MUST mirror the
+renderer's transform — 5% canvas padding on each side, aspect-ratio
+fitting via `Math.min(scaleX, scaleY)`, board centered at `canvasWidth / 2`.
+Both `setWorldWidth` and `setBoardHeight` must be called before `attach`.
 
 **Determinism contract**: Flick vectors are quantized to
 `ShoveConfig.quantizationPrecision` before emission.
