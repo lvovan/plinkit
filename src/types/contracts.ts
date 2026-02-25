@@ -58,6 +58,10 @@ export interface PhysicsSimulation {
   getSnapshot(): PhysicsSnapshot;
   clearPucks(): void;
   destroy(): void;
+  /** Replace pins and bucket dividers while preserving puck bodies. */
+  rebuildBoard(config: GameConfig): void;
+  /** Get all puck bodies for score recalculation. */
+  getAllPucks(): import('@/physics/board-builder').PuckBody[];
 }
 
 // ---- Contract 2: InputManager ----

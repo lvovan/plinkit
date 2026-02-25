@@ -17,6 +17,15 @@ export interface ScorePopEffect {
   duration: number;
 }
 
+export interface ScoreDeltaEffect {
+  x: number;
+  y: number;
+  deltaText: string;
+  color: string;
+  startTime: number;
+  duration: number;
+}
+
 /**
  * Manages visual effects like board shake, score pop animations,
  * collision flashes, and slash effects.
@@ -24,6 +33,7 @@ export interface ScorePopEffect {
 export class EffectsManager {
   private shake: ShakeEffect = { intensity: 0, endTime: 0 };
   private scorePops: ScorePopEffect[] = [];
+  private scoreDeltas: ScoreDeltaEffect[] = [];
   private collisionFlashes: CollisionFlash[] = [];
   private slashEffects: SlashEffect[] = [];
 
@@ -75,6 +85,15 @@ export class EffectsManager {
     });
   }
 
+  /** Add a floating score delta indicator at the given world position. */
+  addScoreDelta(x: number, y: number, deltaText: string, color: string): void {
+    this.scoreDeltas.push({
+      x, y, deltaText, color,
+      startTime: performance.now(),
+      duration: 1200,
+    });
+  }
+
   /** Get active score pop effects for rendering. Removes expired ones. */
   getActiveScorePops(): ScorePopEffect[] {
     const now = performance.now();
@@ -96,6 +115,13 @@ export class EffectsManager {
     return this.slashEffects;
   }
 
+  /** Get active score delta effects. Removes expired ones. */
+  getActiveScoreDeltas(): ScoreDeltaEffect[] {
+    const now = performance.now();
+    this.scoreDeltas = this.scoreDeltas.filter(d => now - d.startTime < d.duration);
+    return this.scoreDeltas;
+  }
+
   /**
    * Render all active visual effects (flashes, slashes, score pops).
    * Called once per frame from the render loop.
@@ -108,6 +134,7 @@ export class EffectsManager {
     this.renderCollisionFlashes(ctx, worldToCanvas, worldToPixels);
     this.renderSlashEffects(ctx, worldToCanvas, worldToPixels);
     this.renderScorePops(ctx, worldToCanvas);
+    this.renderScoreDeltas(ctx, worldToCanvas);
   }
 
   /** Render collision flash effects — radial gradient + multiplier text. */
@@ -238,10 +265,40 @@ export class EffectsManager {
     }
   }
 
+  /** Render score delta effects — floating "+X" / "−X" text with fade-out. */
+  private renderScoreDeltas(
+    ctx: CanvasRenderingContext2D,
+    worldToCanvas: (wx: number, wy: number) => { x: number; y: number },
+  ): void {
+    const now = performance.now();
+    for (const delta of this.getActiveScoreDeltas()) {
+      const elapsed = now - delta.startTime;
+      const progress = elapsed / delta.duration;
+      const alpha = 1 - progress;
+      const yOffset = progress * -40; // float upward
+      const pos = worldToCanvas(delta.x, delta.y);
+
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, alpha);
+      ctx.textAlign = 'center';
+
+      const fontSize = 14 + progress * 6;
+      ctx.font = `bold ${fontSize}px sans-serif`;
+      ctx.fillStyle = delta.color;
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2.5;
+      ctx.strokeText(delta.deltaText, pos.x, pos.y + yOffset);
+      ctx.fillText(delta.deltaText, pos.x, pos.y + yOffset);
+
+      ctx.restore();
+    }
+  }
+
   /** Clear all active effects. */
   clear(): void {
     this.shake = { intensity: 0, endTime: 0 };
     this.scorePops.length = 0;
+    this.scoreDeltas.length = 0;
     this.collisionFlashes.length = 0;
     this.slashEffects.length = 0;
   }
