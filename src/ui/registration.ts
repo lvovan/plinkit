@@ -63,11 +63,10 @@ export class RegistrationOverlay {
       const updateStartBtn = () => {
         const inputs = this.overlay!.querySelectorAll('.player-name') as NodeListOf<HTMLInputElement>;
         const filledCount = Array.from(inputs).filter(i => i.value.trim().length > 0).length;
-        startBtn.disabled = filledCount < 2;
+        startBtn.disabled = filledCount < 1;
       };
 
-      // Add 2 initial inputs
-      addInput();
+      // Add 1 initial input (more can be added)
       addInput();
 
       // Event listeners
@@ -88,7 +87,7 @@ export class RegistrationOverlay {
           }
         });
 
-        if (registrations.length >= 2) {
+        if (registrations.length >= 1) {
           this.hide();
           resolve(registrations);
         }

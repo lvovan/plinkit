@@ -65,7 +65,7 @@ totals each player's score and declares a winner.
 *game* rather than a toy. Registration, turn order, score accumulation,
 and winner declaration are the minimum for competitive play.
 
-**Independent Test**: Register 2–4 players, play through all rounds, and
+**Independent Test**: Register 1–4 players, play through all rounds, and
 confirm turns alternate correctly, scores accumulate, and the correct
 winner is declared.
 
@@ -286,7 +286,7 @@ are fully visible and usable on both without scrolling.
 - What happens when a player enters an empty name during registration?
   The game MUST require at least one non-whitespace character per name.
 - What happens when only one player registers?
-  The game MUST require at least 2 players to start a competitive session.
+  The game MUST allow a single player to start a solo session (no opponent needed). In solo mode, the player plays all rounds and sees their final score at the end.
 - What happens if a puck gets stuck between pins (or between pins and
   a previously dropped puck) and does not reach a bucket within a
   reasonable time? The game MUST detect a stalled puck (e.g., near-zero
@@ -323,7 +323,7 @@ are fully visible and usable on both without scrolling.
 
 **Registration & Session**
 
-- **FR-001**: The game MUST support 2 to 4 players per session.
+- **FR-001**: The game MUST support 1 to 4 players per session.
 - **FR-002**: Each player MUST enter a display name during registration
   (minimum 1 non-whitespace character, maximum 16 characters).
 - **FR-003**: Each player MUST be automatically assigned a visually
