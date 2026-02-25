@@ -7,6 +7,7 @@ import type {
   PhysicsSnapshot,
   CollisionEvent,
   SettledPuckEvent,
+  OutOfBoundsEvent,
 } from '@/types/contracts';
 import { BoardBuilder, type Board, type PuckBody } from './board-builder';
 import { BucketDetector } from './bucket-detector';
@@ -27,10 +28,12 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
   private tick = 0;
   private bucketDetector: BucketDetector | null = null;
   private pendingCollisions: CollisionEvent[] = [];
+  private oobTimers: Map<string, number> = new Map();
 
   createWorld(config: GameConfig): void {
     this.config = config;
     this.tick = 0;
+    this.oobTimers.clear();
     nextPuckId = 0;
 
     const builder = new BoardBuilder();
@@ -133,8 +136,35 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
 
     // Check for settled pucks
     const settledPucks: SettledPuckEvent[] = [];
+    const outOfBoundsPucks: OutOfBoundsEvent[] = [];
+    const topBoundaryY = this.config.boardLayout.boardHeight / 2;
+    const puckRadius = this.config.boardLayout.puckRadius;
+    const OOB_GRACE_TICKS = 30; // 0.5s at 60 fps
+
     for (const puck of this.board.pucks) {
       if (puck.isSettled) continue;
+
+      const pos = puck.body.getPosition();
+
+      // Out-of-bounds check: puck center fully above top boundary
+      if (pos.y > topBoundaryY + puckRadius) {
+        if (!this.oobTimers.has(puck.id)) {
+          this.oobTimers.set(puck.id, this.tick);
+        }
+        if (this.tick - this.oobTimers.get(puck.id)! >= OOB_GRACE_TICKS) {
+          puck.isSettled = true;
+          puck.settledInBucket = -1;
+          outOfBoundsPucks.push({
+            puckId: puck.id,
+            position: { x: pos.x, y: pos.y },
+          });
+          this.oobTimers.delete(puck.id);
+        }
+        continue; // Skip bucket detection for OOB puck
+      } else {
+        // Puck returned in-bounds — reset timer
+        this.oobTimers.delete(puck.id);
+      }
 
       const settled = this.bucketDetector!.checkSettled(
         puck,
@@ -156,6 +186,7 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
       tick: this.tick,
       collisions: [...this.pendingCollisions],
       settledPucks,
+      outOfBoundsPucks,
     };
   }
 
@@ -198,6 +229,7 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
       this.board.world.destroyBody(puck.body);
     }
     this.board.pucks = [];
+    this.oobTimers.clear();
   }
 
   destroy(): void {
@@ -207,6 +239,7 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
     }
     this.config = null;
     this.bucketDetector = null;
+    this.oobTimers.clear();
     this.tick = 0;
   }
 

@@ -136,6 +136,7 @@ const turnTimer = new TurnTimer(
     // Timer expired — auto-drop puck from last position with no shoves
     if (!puckDropped && currentPlayer) {
       activePuckId = sim.dropPuck(dropX, currentPlayer.id);
+      puckStyleMap.set(activePuckId, currentPuckStyle);
       puckDropped = true;
       shovesDisabled = true; // no shoves allowed on timeout
       input.setFlickEnabled(false);
@@ -154,6 +155,7 @@ input.onRelease(() => {
   if (!puckDropped && currentPlayer) {
     turnTimer.stop();
     activePuckId = sim.dropPuck(dropX, currentPlayer.id);
+    puckStyleMap.set(activePuckId, currentPuckStyle);
     puckDropped = true;
     input.setFlickEnabled(true);
     shovesUsed = 0;
@@ -227,6 +229,48 @@ const loop = new GameLoop({
       );
     }
 
+    // Check for out-of-bounds pucks
+    if (result.outOfBoundsPucks.length > 0) {
+      const turnResult: TurnResult = {
+        dropPositionX: dropX,
+        shoves: [],
+        bucketIndex: -1,
+        scoreEarned: 0,
+        wasTimeout: false,
+      };
+
+      stateMachine.completeTurn(turnResult);
+      overlays.showOutOfBounds();
+      const state = stateMachine.getState();
+      overlays.updateScoreboard(state.players);
+
+      const roundAction = stateMachine.evaluateRoundEnd();
+
+      puckDropped = false;
+      activePuckId = null;
+      input.setFlickEnabled(false);
+
+      if (roundAction.type === 'nextRound') {
+        startNextTurn();
+      } else if (roundAction.type === 'winner') {
+        gameRunning = false;
+        turnTimer.stop();
+        audioManager.play('winner');
+        handleGameEnd(state.players, roundAction.winner, false);
+      } else if (roundAction.type === 'tieBreaker') {
+        stateMachine.startTieBreaker(roundAction.tiedPlayers);
+        sim.clearPucks();
+        puckStyleMap.clear();
+        startNextTurn();
+      } else if (roundAction.type === 'coWinners') {
+        gameRunning = false;
+        turnTimer.stop();
+        audioManager.play('winner');
+        handleGameEnd(state.players, roundAction.winners, true);
+      }
+      return; // OOB handled — skip settled puck processing
+    }
+
     // Check for settled pucks
     for (const settled of result.settledPucks) {
       // Calculate score with bounce multiplier
@@ -273,6 +317,7 @@ const loop = new GameLoop({
         // Start tie-breaker round with only tied players
         stateMachine.startTieBreaker(roundAction.tiedPlayers);
         sim.clearPucks();
+        puckStyleMap.clear();
         startNextTurn();
       } else if (roundAction.type === 'coWinners') {
         gameRunning = false;
@@ -292,7 +337,7 @@ const loop = new GameLoop({
         x: p.x,
         y: p.y,
         radius: layout.puckRadius,
-        style: currentPuckStyle,
+        style: puckStyleMap.get(p.id) ?? currentPuckStyle,
         settled: p.settled,
       })),
       buckets: bucketRenderData,
@@ -321,7 +366,7 @@ function startNextTurn(): void {
   shovesDisabled = false;
   overlays.showTurnIndicator(ctx.player, ctx.timerSeconds);
   overlays.updateTimer(ctx.timerSeconds);
-  sim.clearPucks();
+  // Pucks persist as collidable objects — only cleared at game end / tie-breaker
   turnTimer.reset();
   turnTimer.start();
 }
@@ -332,6 +377,7 @@ async function handleGameEnd(players: Player[], winner: Player | Player[], isTie
   if (action === 'playAgain') {
     stateMachine.resetForReplay();
     sim.clearPucks();
+    puckStyleMap.clear();
     sim.createWorld(config);
     gameRunning = true;
     startNextTurn();
@@ -339,6 +385,7 @@ async function handleGameEnd(players: Player[], winner: Player | Player[], isTie
   } else if (action === 'newPlayers') {
     stateMachine.resetFull();
     sim.clearPucks();
+    puckStyleMap.clear();
     sim.createWorld(config);
     startGame();
   } else {
@@ -370,6 +417,7 @@ async function startGame(): Promise<void> {
   gameRunning = true;
 
   sim.clearPucks();
+  puckStyleMap.clear();
   sim.createWorld(config);
   startNextTurn();
 }

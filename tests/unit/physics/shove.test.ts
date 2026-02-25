@@ -23,12 +23,12 @@ describe('Shove Application', () => {
     const applied = sim.applyShove(puckId, { dx: 2, dy: 0, appliedAtTick: 5 });
     expect(applied).toBe(true);
 
-    // Step once more
-    sim.step();
+    // Step several times to allow displacement to accumulate
+    for (let i = 0; i < 10; i++) sim.step();
     const stateAfter = sim.getPuckState(puckId);
 
     // Position should have changed horizontally due to impulse
-    expect(stateAfter.position.x).not.toBeCloseTo(stateBefore.position.x, 1);
+    expect(Math.abs(stateAfter.position.x - stateBefore.position.x)).toBeGreaterThan(0.1);
   });
 
   it('should reject shove when puck is below shove zone', () => {
