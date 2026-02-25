@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { PhysicsSimulationImpl } from '@/physics/simulation';
-import { DEFAULT_GAME_CONFIG } from '@/config/game-config';
+import { DEFAULT_GAME_CONFIG, createGameConfig } from '@/config/game-config';
 
 describe('PhysicsSimulation', () => {
   let sim: PhysicsSimulationImpl;
@@ -95,6 +95,124 @@ describe('PhysicsSimulation', () => {
       expect(sim.getSnapshot().pucks.length).toBe(2);
       sim.clearPucks();
       expect(sim.getSnapshot().pucks.length).toBe(0);
+    });
+  });
+
+  describe('Out-of-Bounds detection', () => {
+    it('should trigger OOB event when puck is above top boundary for 30+ ticks (T006)', () => {
+      const sim2 = new PhysicsSimulationImpl();
+      const config = createGameConfig({
+        boardLayout: {
+          ...DEFAULT_GAME_CONFIG.boardLayout,
+          pinRows: 2,
+        },
+      });
+      sim2.createWorld(config);
+      const puckId = sim2.dropPuck(0, 'player1');
+
+      // Apply massive upward force to send puck above the board
+      sim2.applyShove(puckId, { dx: 0, dy: 50, appliedAtTick: 0 });
+
+      // Step until puck goes above the top boundary, then keep stepping for grace period
+      let oobFound = false;
+      for (let i = 0; i < 200; i++) {
+        const result = sim2.step();
+        if (result.outOfBoundsPucks.length > 0) {
+          oobFound = true;
+          expect(result.outOfBoundsPucks[0].puckId).toBe(puckId);
+          break;
+        }
+      }
+      expect(oobFound).toBe(true);
+      sim2.destroy();
+    });
+
+    it('should NOT trigger OOB when puck is above boundary for less than 30 ticks (T007)', () => {
+      const sim2 = new PhysicsSimulationImpl();
+      const config = createGameConfig({
+        boardLayout: {
+          ...DEFAULT_GAME_CONFIG.boardLayout,
+          pinRows: 2,
+        },
+      });
+      sim2.createWorld(config);
+      const puckId = sim2.dropPuck(0, 'player1');
+
+      // Apply a gentle upward force — puck goes above briefly then returns
+      // With gravity=-10, density=1, puckRadius=0.5, the puck is at y=6.0
+      // Top boundary for OOB is at y=7.5. Need just barely enough to cross.
+      sim2.applyShove(puckId, { dx: 0, dy: 3, appliedAtTick: 0 });
+
+      let oobTriggered = false;
+      for (let i = 0; i < 60; i++) {
+        const result = sim2.step();
+        if (result.outOfBoundsPucks.length > 0) {
+          oobTriggered = true;
+          break;
+        }
+      }
+      // With gentle force, puck crosses above briefly, gravity pulls back within 30 ticks
+      expect(oobTriggered).toBe(false);
+      sim2.destroy();
+    });
+
+    it('should reset OOB timer when puck returns below boundary (T008)', () => {
+      const sim2 = new PhysicsSimulationImpl();
+      const config = createGameConfig({
+        boardLayout: {
+          ...DEFAULT_GAME_CONFIG.boardLayout,
+          pinRows: 2,
+        },
+      });
+      sim2.createWorld(config);
+      const puckId = sim2.dropPuck(0, 'player1');
+
+      // Apply gentle upward force — puck may cross boundary briefly then return
+      sim2.applyShove(puckId, { dx: 0, dy: 3, appliedAtTick: 0 });
+
+      // Step for a while — puck may go above briefly then return
+      let oobTriggered = false;
+      for (let i = 0; i < 60; i++) {
+        const result = sim2.step();
+        if (result.outOfBoundsPucks.length > 0) {
+          oobTriggered = true;
+          break;
+        }
+      }
+      // With gentle force, puck returns in-bounds, timer resets, no OOB
+      expect(oobTriggered).toBe(false);
+      sim2.destroy();
+    });
+
+    it('should include correct puckId and position in OOB event (T009)', () => {
+      const sim2 = new PhysicsSimulationImpl();
+      const config = createGameConfig({
+        boardLayout: {
+          ...DEFAULT_GAME_CONFIG.boardLayout,
+          pinRows: 2,
+        },
+      });
+      sim2.createWorld(config);
+      const puckId = sim2.dropPuck(0, 'player1');
+      const topBoundary = config.boardLayout.boardHeight / 2;
+
+      // Apply strong upward force
+      sim2.applyShove(puckId, { dx: 0, dy: 50, appliedAtTick: 0 });
+
+      let oobEvent = null;
+      for (let i = 0; i < 200; i++) {
+        const result = sim2.step();
+        if (result.outOfBoundsPucks.length > 0) {
+          oobEvent = result.outOfBoundsPucks[0];
+          break;
+        }
+      }
+
+      expect(oobEvent).not.toBeNull();
+      expect(oobEvent!.puckId).toBe(puckId);
+      expect(oobEvent!.position.y).toBeGreaterThan(topBoundary);
+      expect(typeof oobEvent!.position.x).toBe('number');
+      sim2.destroy();
     });
   });
 });

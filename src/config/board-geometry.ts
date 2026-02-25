@@ -21,7 +21,6 @@ export function computePinPositions(layout: BoardLayout): PinPosition[] {
   for (let row = 0; row < pinRows; row++) {
     // Number of pins per row: alternate between bucketCount and bucketCount-1
     const pinsInRow = row % 2 === 0 ? bucketCount : bucketCount - 1;
-    const rowOffset = row % 2 === 0 ? 0 : pinSpacing / 2;
     const rowWidth = (pinsInRow - 1) * pinSpacing;
 
     // Y position: top of play area down to bottom
@@ -29,7 +28,7 @@ export function computePinPositions(layout: BoardLayout): PinPosition[] {
     const y = boardHeight / 2 - topMargin - row * rowSpacing;
 
     for (let col = 0; col < pinsInRow; col++) {
-      const x = -rowWidth / 2 + col * pinSpacing + rowOffset;
+      const x = -rowWidth / 2 + col * pinSpacing;
       pins.push({ x, y, row, col });
     }
   }
