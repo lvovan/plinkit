@@ -60,9 +60,19 @@ The puck's pattern (stripes, dots, or rings) must rotate on screen to reflect th
 ### Edge Cases
 
 - A puck dropped perfectly centered on a pin (direct vertical hit) should receive minimal spin (nearly zero tangential component).
-- Extremely rapid spin (many successive glancing contacts) must be visually readable — the pattern should not become a blur at typical game speeds.
+- Extremely rapid spin (many successive glancing contacts) is prevented by capping angular velocity at a configurable maximum (FR-015).
 - A shove applied to a spinning puck should combine linear and angular momentum naturally.
 - Ghost puck (pre-drop indicator) must NOT rotate — it remains at a fixed angle of 0.
+
+## Clarifications
+
+### Session 2026-02-25
+
+- Q: Should settled pucks freeze their angle permanently (FR-005) or react to new collisions (US2)? → A: Settled pucks rest at their final angle but react to new collisions (angle can change).
+- Q: How quickly should spin decay in free fall (SC-003)? → A: ~1 second — spin decays noticeably within a single board traversal.
+- Q: Should puck spin have an explicit maximum angular velocity? → A: Yes — cap at a readable limit (~2 rotations/sec), tunable in config.
+- Q: Should shoves induce rotation directly? → A: Shove applied slightly off-center — produces a small spin on every shove.
+- Q: Should rotation influence scoring? → A: No — rotation is purely a visual/physics enhancement with zero effect on scoring.
 
 ## Requirements *(mandatory)*
 
@@ -74,7 +84,7 @@ The puck's pattern (stripes, dots, or rings) must rotate on screen to reflect th
 - **FR-002**: Pin-puck friction MUST impart angular velocity to the puck proportional to the tangential contact speed.
 - **FR-003**: Puck-puck friction MUST transfer angular momentum between colliding pucks.
 - **FR-004**: Pucks MUST have angular damping so that spin decays gradually in free fall rather than persisting indefinitely.
-- **FR-005**: Settled pucks MUST retain their final rotation angle.
+- **FR-005**: Settled pucks MUST retain their final rotation angle while undisturbed; subsequent collisions from other pucks MAY change their angle and spin.
 
 **Rendering**
 
@@ -90,9 +100,10 @@ The puck's pattern (stripes, dots, or rings) must rotate on screen to reflect th
 
 - **FR-010**: Staggered pin layout (quinconce) MUST be maintained — even rows have one more pin than odd rows, both horizontally centered.
 - **FR-011**: Puck drop position MUST be determined by the player's click/touch X-axis position, as currently implemented.
-- **FR-012**: Shove mechanics MUST continue to work — applied forces should produce both linear and angular effects naturally.
-- **FR-013**: Bounce-based scoring (exponential multiplier) MUST remain unchanged.
+- **FR-012**: Shove mechanics MUST continue to work — shove forces are applied slightly off the puck's center of mass, producing both a lateral impulse and a small rotational spin on each shove.
+- **FR-013**: Bounce-based scoring (exponential multiplier) MUST remain unchanged. Rotation has no effect on scoring — it is purely a visual and physics enhancement.
 - **FR-014**: Deterministic physics MUST be preserved — identical inputs must produce identical puck paths and rotation sequences.
+- **FR-015**: Puck angular velocity MUST be capped at a configurable maximum (~2 full rotations per second by default) to keep patterns visually readable.
 
 ### Key Entities
 
@@ -106,7 +117,7 @@ The puck's pattern (stripes, dots, or rings) must rotate on screen to reflect th
 
 - **SC-001**: A puck dropped to graze a pin visually spins — the pattern rotation is perceptible to the player within the first 2 pin contacts.
 - **SC-002**: Two pucks colliding show different post-collision spin directions, confirming friction-based angular momentum transfer.
-- **SC-003**: A spinning puck's rotation decays to near-zero within 3 seconds of free fall (no contact), confirming angular damping is effective.
+- **SC-003**: A spinning puck's rotation decays noticeably within ~1 second of free fall (no contact), confirming angular damping is effective and visible during a typical board traversal.
 - **SC-004**: All existing tests continue to pass — no regression in scoring, state machine, or collision event detection.
 - **SC-005**: Physics determinism is maintained — dropping a puck from the same position with the same shoves produces the same final angle and bucket landing across 10 consecutive runs.
 
