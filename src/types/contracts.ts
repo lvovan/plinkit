@@ -109,16 +109,30 @@ export interface Renderer {
 
 export type SoundName = 'drop' | 'pinHit' | 'shove' | 'bucketLand' | 'winner' | 'tick' | 'timeout';
 
-export interface SpriteMap {
-  [name: string]: { offset: number; duration: number };
-}
-
 export interface AudioManager {
   unlock(): Promise<void>;
-  load(spriteUrl: string, spriteMap: SpriteMap): Promise<void>;
+  init(): void;
   play(name: SoundName, options?: { pitchVariation?: number }): void;
+  setSfxVolume(volume: number): void;
+  toggleMuteSfx(): void;
+  isSfxMuted(): boolean;
+  getContext(): AudioContext;
+  getMasterGain(): GainNode;
+}
+
+// ---- Contract 7: MusicManager ----
+
+export type MusicTrack = 'lobby' | 'gameplay';
+
+export interface MusicManager {
+  init(ctx: AudioContext, destination: AudioNode): void;
+  startTrack(track: MusicTrack): void;
+  crossfadeTo(track: MusicTrack, durationMs?: number): void;
+  stop(): void;
   setVolume(volume: number): void;
   toggleMute(): void;
+  isMuted(): boolean;
+  getCurrentTrack(): MusicTrack | null;
 }
 
 // ---- Contract 5: GameStateMachine ----
@@ -133,7 +147,6 @@ export interface TurnContext {
   player: Player;
   turnNumber: number;
   roundNumber: number;
-  shovesRemaining: number;
   timerSeconds: number;
 }
 
@@ -173,9 +186,10 @@ export interface UIOverlayManager {
   updateScoreboard(players: Player[]): void;
   showTurnIndicator(player: Player, timerSeconds: number): void;
   updateTimer(secondsRemaining: number): void;
-  updateShoveCounter(remaining: number, total: number): void;
   showResults(players: Player[], winner: Player | Player[]): Promise<ResultsAction>;
   showOutOfBounds(): void;
   showFarewell(): void;
   hideAll(): void;
+  initAudioToggles(onToggleSfx: () => void, onToggleMusic: () => void): void;
+  updateAudioToggleState(sfxMuted: boolean, musicMuted: boolean): void;
 }

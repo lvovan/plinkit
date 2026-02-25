@@ -337,7 +337,6 @@ export class CanvasRenderer implements Renderer {
         ctx.arc(0, 0, r * 0.3, 0, Math.PI * 2);
         ctx.stroke();
         break;
-      // 'solid' — no overlay
     }
 
     ctx.restore();

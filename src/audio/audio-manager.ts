@@ -1,16 +1,29 @@
-import type { AudioManager, SoundName, SpriteMap } from '@/types/contracts';
+import type { AudioManager, SoundName } from '@/types/contracts';
+import {
+  playDrop,
+  playPinHit,
+  playShove,
+  playBucketLand,
+  playWinner,
+  playTick,
+  playTimeout,
+} from './synth-effects';
 
 /**
- * AudioManager implementation using Web Audio API.
- * Loads an audio sprite sheet and plays named sounds with optional pitch variation.
+ * AudioManager implementation using Web Audio API synthesis.
+ * All sounds are generated programmatically — no audio files loaded.
+ *
+ * Audio bus routing:
+ *   AudioContext → masterGain → sfxGain → [SFX nodes]
+ *                             ↘ (MusicManager connects to masterGain)
  */
 export class GameAudioManager implements AudioManager {
   private ctx: AudioContext | null;
   private masterGain: GainNode | null = null;
-  private buffer: AudioBuffer | null = null;
-  private spriteMap: SpriteMap = {};
+  private sfxGain: GainNode | null = null;
   private muted = false;
-  private savedVolume = 1;
+  private sfxVolume = 0.7;
+  private initialized = false;
 
   constructor(ctx?: AudioContext) {
     this.ctx = ctx ?? null;
@@ -19,10 +32,6 @@ export class GameAudioManager implements AudioManager {
   private ensureContext(): AudioContext {
     if (!this.ctx) {
       this.ctx = new AudioContext();
-    }
-    if (!this.masterGain) {
-      this.masterGain = this.ctx.createGain();
-      this.masterGain.connect(this.ctx.destination);
     }
     return this.ctx;
   }
@@ -34,54 +43,79 @@ export class GameAudioManager implements AudioManager {
     }
   }
 
-  async load(spriteUrl: string, spriteMap: SpriteMap): Promise<void> {
-    this.spriteMap = spriteMap;
+  init(): void {
+    if (this.initialized) return;
     const ctx = this.ensureContext();
-    const response = await fetch(spriteUrl);
-    const arrayBuffer = await response.arrayBuffer();
-    this.buffer = await ctx.decodeAudioData(arrayBuffer);
+
+    // Master gain → destination
+    this.masterGain = ctx.createGain();
+    this.masterGain.connect(ctx.destination);
+
+    // SFX gain → master gain
+    this.sfxGain = ctx.createGain();
+    this.sfxGain.gain.value = this.sfxVolume;
+    this.sfxGain.connect(this.masterGain);
+
+    this.initialized = true;
   }
 
   play(name: SoundName, options?: { pitchVariation?: number }): void {
-    if (!this.buffer || this.muted) return;
-
-    const sprite = this.spriteMap[name];
-    if (!sprite) return;
+    if (this.muted || !this.sfxGain) return;
 
     const ctx = this.ensureContext();
-    const source = ctx.createBufferSource();
-    source.buffer = this.buffer;
-    source.connect(this.masterGain!);
+    const dest = this.sfxGain;
 
-    // Apply pitch variation if specified
-    if (options?.pitchVariation) {
-      const variation = options.pitchVariation;
-      // Random pitch between (1 - variation) and (1 + variation)
-      const pitch = 1 + (Math.random() * 2 - 1) * variation;
-      source.playbackRate.value = pitch;
+    switch (name) {
+      case 'drop':
+        playDrop(ctx, dest);
+        break;
+      case 'pinHit':
+        playPinHit(ctx, dest, options?.pitchVariation);
+        break;
+      case 'shove':
+        playShove(ctx, dest);
+        break;
+      case 'bucketLand':
+        playBucketLand(ctx, dest);
+        break;
+      case 'winner':
+        playWinner(ctx, dest);
+        break;
+      case 'tick':
+        playTick(ctx, dest);
+        break;
+      case 'timeout':
+        playTimeout(ctx, dest);
+        break;
     }
-
-    source.start(0, sprite.offset, sprite.duration);
   }
 
-  setVolume(volume: number): void {
-    this.ensureContext();
-    const clamped = Math.max(0, Math.min(1, volume));
-    this.masterGain!.gain.value = clamped;
-    if (!this.muted) {
-      this.savedVolume = clamped;
+  setSfxVolume(volume: number): void {
+    this.sfxVolume = Math.max(0, Math.min(1, volume));
+    if (this.sfxGain && !this.muted) {
+      this.sfxGain.gain.value = this.sfxVolume;
     }
   }
 
-  toggleMute(): void {
-    this.ensureContext();
-    if (this.muted) {
-      this.muted = false;
-      this.masterGain!.gain.value = this.savedVolume;
-    } else {
-      this.savedVolume = this.masterGain!.gain.value;
-      this.muted = true;
-      this.masterGain!.gain.value = 0;
+  toggleMuteSfx(): void {
+    this.muted = !this.muted;
+    if (this.sfxGain) {
+      this.sfxGain.gain.value = this.muted ? 0 : this.sfxVolume;
     }
+  }
+
+  isSfxMuted(): boolean {
+    return this.muted;
+  }
+
+  getContext(): AudioContext {
+    return this.ensureContext();
+  }
+
+  getMasterGain(): GainNode {
+    if (!this.masterGain) {
+      this.init();
+    }
+    return this.masterGain!;
   }
 }

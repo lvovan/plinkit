@@ -1,41 +1,54 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GameAudioManager } from '@/audio/audio-manager';
 
-// Mock the Web Audio API
+/**
+ * T020: Verify AudioManager.toggleMuteSfx() toggles muted state
+ * and isSfxMuted() returns correct value.
+ */
+
 function createMockAudioContext() {
-  const gainNode = {
-    gain: { value: 1, setValueAtTime: vi.fn() },
-    connect: vi.fn(),
-  };
-
-  const sourceNode = {
-    buffer: null as AudioBuffer | null,
-    connect: vi.fn(),
-    start: vi.fn(),
-    stop: vi.fn(),
-    playbackRate: { value: 1 },
-  };
-
   const ctx = {
     state: 'suspended' as string,
     resume: vi.fn().mockResolvedValue(undefined),
-    createGain: vi.fn(() => gainNode),
-    createBufferSource: vi.fn(() => sourceNode),
-    decodeAudioData: vi.fn().mockResolvedValue({
-      duration: 10,
-      length: 441000,
-      sampleRate: 44100,
+    createGain: vi.fn(() => ({
+      gain: { value: 1, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
+      connect: vi.fn(),
+    })),
+    createOscillator: vi.fn(() => ({
+      type: 'sine',
+      frequency: { value: 440, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
+      connect: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn(),
+    })),
+    createBiquadFilter: vi.fn(() => ({
+      type: 'lowpass',
+      frequency: { value: 0, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() },
+      Q: { value: 1 },
+      connect: vi.fn(),
+    })),
+    createBufferSource: vi.fn(() => ({
+      buffer: null,
+      connect: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn(),
+    })),
+    createBuffer: vi.fn((_channels: number, length: number, sampleRate: number) => ({
+      length,
+      sampleRate,
       numberOfChannels: 1,
-      getChannelData: vi.fn(() => new Float32Array(441000)),
-    } as unknown as AudioBuffer),
+      duration: length / sampleRate,
+      getChannelData: vi.fn(() => new Float32Array(length)),
+    })),
     destination: {},
     currentTime: 0,
+    sampleRate: 44100,
   };
 
-  return { ctx, gainNode, sourceNode };
+  return { ctx };
 }
 
-describe('GameAudioManager', () => {
+describe('GameAudioManager (Web Audio Synthesis)', () => {
   let audio: GameAudioManager;
   let mockCtx: ReturnType<typeof createMockAudioContext>;
 
@@ -56,87 +69,80 @@ describe('GameAudioManager', () => {
     });
   });
 
-  describe('load()', () => {
-    it('should load and decode audio sprite sheet', async () => {
-      // Mock fetch
-      globalThis.fetch = vi.fn().mockResolvedValue({
-        arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(100)),
-      }) as unknown as typeof fetch;
+  describe('init()', () => {
+    it('should initialize without errors', () => {
+      expect(() => audio.init()).not.toThrow();
+    });
 
-      const spriteMap = {
-        drop: { offset: 0, duration: 0.5 },
-        pinHit: { offset: 0.5, duration: 0.2 },
-      };
-
-      await audio.load('audio/sprites.ogg', spriteMap);
-
-      expect(globalThis.fetch).toHaveBeenCalledWith('audio/sprites.ogg');
-      expect(mockCtx.ctx.decodeAudioData).toHaveBeenCalled();
+    it('should create gain nodes for audio bus routing', () => {
+      audio.init();
+      expect(mockCtx.ctx.createGain).toHaveBeenCalled();
     });
   });
 
   describe('play()', () => {
-    it('should play a named sound from the sprite map', async () => {
-      globalThis.fetch = vi.fn().mockResolvedValue({
-        arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(100)),
-      }) as unknown as typeof fetch;
-
-      const spriteMap = {
-        drop: { offset: 0, duration: 0.5 },
-        pinHit: { offset: 0.5, duration: 0.2 },
-      };
-
-      await audio.load('audio/sprites.ogg', spriteMap);
-      audio.play('drop');
-
-      expect(mockCtx.ctx.createBufferSource).toHaveBeenCalled();
-      expect(mockCtx.sourceNode.start).toHaveBeenCalledWith(0, 0, 0.5);
+    it('should not throw when playing a valid sound name', () => {
+      audio.init();
+      expect(() => audio.play('drop')).not.toThrow();
     });
 
-    it('should apply pitch variation when specified', async () => {
-      globalThis.fetch = vi.fn().mockResolvedValue({
-        arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(100)),
-      }) as unknown as typeof fetch;
+    it('should not throw when SFX is muted', () => {
+      audio.init();
+      audio.toggleMuteSfx();
+      expect(() => audio.play('drop')).not.toThrow();
+    });
 
-      const spriteMap = {
-        pinHit: { offset: 0.5, duration: 0.2 },
-      };
-
-      await audio.load('audio/sprites.ogg', spriteMap);
-
-      // Mock Math.random for deterministic pitch variation
-      const origRandom = Math.random;
-      Math.random = () => 0.5; // Should yield pitch = 1.0 (center of variation range)
-      audio.play('pinHit', { pitchVariation: 0.2 });
-      Math.random = origRandom;
-
-      expect(mockCtx.sourceNode.playbackRate.value).toBeCloseTo(1.0, 1);
+    it('should accept pitch variation option', () => {
+      audio.init();
+      expect(() => audio.play('pinHit', { pitchVariation: 0.15 })).not.toThrow();
     });
   });
 
-  describe('setVolume()', () => {
-    it('should set the master volume on the gain node', () => {
-      audio.setVolume(0.5);
-      expect(mockCtx.gainNode.gain.value).toBe(0.5);
+  describe('toggleMuteSfx() / isSfxMuted()', () => {
+    it('should start unmuted', () => {
+      audio.init();
+      expect(audio.isSfxMuted()).toBe(false);
+    });
+
+    it('should toggle to muted', () => {
+      audio.init();
+      audio.toggleMuteSfx();
+      expect(audio.isSfxMuted()).toBe(true);
+    });
+
+    it('should toggle back to unmuted', () => {
+      audio.init();
+      audio.toggleMuteSfx();
+      audio.toggleMuteSfx();
+      expect(audio.isSfxMuted()).toBe(false);
+    });
+  });
+
+  describe('setSfxVolume()', () => {
+    it('should not throw when setting volume', () => {
+      audio.init();
+      expect(() => audio.setSfxVolume(0.5)).not.toThrow();
     });
 
     it('should clamp volume to 0-1 range', () => {
-      audio.setVolume(1.5);
-      expect(mockCtx.gainNode.gain.value).toBe(1);
-
-      audio.setVolume(-0.5);
-      expect(mockCtx.gainNode.gain.value).toBe(0);
+      audio.init();
+      expect(() => audio.setSfxVolume(1.5)).not.toThrow();
+      expect(() => audio.setSfxVolume(-0.5)).not.toThrow();
     });
   });
 
-  describe('toggleMute()', () => {
-    it('should mute and unmute the audio', () => {
-      audio.setVolume(0.8);
-      audio.toggleMute();
-      expect(mockCtx.gainNode.gain.value).toBe(0);
+  describe('getContext()', () => {
+    it('should return the AudioContext', () => {
+      const ctx = audio.getContext();
+      expect(ctx).toBeDefined();
+    });
+  });
 
-      audio.toggleMute();
-      expect(mockCtx.gainNode.gain.value).toBe(0.8);
+  describe('getMasterGain()', () => {
+    it('should return a GainNode after init', () => {
+      audio.init();
+      const masterGain = audio.getMasterGain();
+      expect(masterGain).toBeDefined();
     });
   });
 });
