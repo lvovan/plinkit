@@ -53,7 +53,7 @@ export interface PhysicsSimulation {
   createWorld(config: GameConfig): void;
   dropPuck(x: number, playerId: string): string;
   applyShove(puckId: string, vector: ShoveVector): boolean;
-  step(): PhysicsStepResult;
+  step(timeScale?: number): PhysicsStepResult;
   getPuckState(puckId: string): PuckState;
   getSnapshot(): PhysicsSnapshot;
   clearPucks(): void;
@@ -107,12 +107,12 @@ export interface Renderer {
 
 // ---- Contract 4: AudioManager ----
 
-export type SoundName = 'drop' | 'pinHit' | 'shove' | 'bucketLand' | 'winner' | 'tick' | 'timeout';
+export type SoundName = 'drop' | 'pinHit' | 'shove' | 'bucketLand' | 'winner' | 'tick' | 'timeout' | 'jackpotBucket';
 
 export interface AudioManager {
   unlock(): Promise<void>;
   init(): void;
-  play(name: SoundName, options?: { pitchVariation?: number }): void;
+  play(name: SoundName, options?: { pitchVariation?: number; timeScale?: number }): void;
   setSfxVolume(volume: number): void;
   toggleMuteSfx(): void;
   isSfxMuted(): boolean;
@@ -133,6 +133,7 @@ export interface MusicManager {
   toggleMute(): void;
   isMuted(): boolean;
   getCurrentTrack(): MusicTrack | null;
+  setTimeScale(scale: number): void;
 }
 
 // ---- Contract 5: GameStateMachine ----
@@ -192,4 +193,6 @@ export interface UIOverlayManager {
   hideAll(): void;
   initAudioToggles(onToggleSfx: () => void, onToggleMusic: () => void): void;
   updateAudioToggleState(sfxMuted: boolean, musicMuted: boolean): void;
+  initAnimationToggle(onToggle: (enabled: boolean) => void): void;
+  updateAnimationToggleState(animationEnabled: boolean): void;
 }

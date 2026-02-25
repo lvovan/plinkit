@@ -1,75 +1,104 @@
-# Implementation Plan: Microsoft Clarity Telemetry
+# Implementation Plan: [FEATURE]
 
-**Branch**: `006-clarity-telemetry` | **Date**: 2025-02-25 | **Spec**: [spec.md](spec.md)
-**Input**: Feature specification from `/specs/006-clarity-telemetry/spec.md`
+**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
+**Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
+
+**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/plan-template.md` for the execution workflow.
 
 ## Summary
 
-Integrate Microsoft Clarity's telemetry SDK into the Plinkit SPA to capture session recordings, heatmaps, and engagement metrics. The integration uses cookieless mode, reads the Clarity project ID from `VITE_CLARITY_PROJECT_ID` at build time, and enriches sessions with custom game event tags (game_start, turn_complete, game_end, replay, new_session). The implementation must be fully resilient — no game degradation if Clarity is blocked or unavailable.
+[Extract from feature spec: primary requirement + technical approach from research]
 
 ## Technical Context
 
-**Language/Version**: TypeScript (strict mode), ES2022 target  
-**Primary Dependencies**: Vite 7.x (bundler), Planck.js (physics), Microsoft Clarity JS SDK (new)  
-**Storage**: N/A — all telemetry is sent to Clarity's cloud; no local persistence  
-**Testing**: Vitest (unit/integration), Playwright (E2E)  
-**Target Platform**: Browser SPA (latest 2 versions of Chrome, Safari, Firefox, Edge)  
-**Project Type**: Client-side SPA game (Canvas-based rendering, DOM overlays)  
-**Performance Goals**: 60 fps gameplay, <200ms additional startup latency from Clarity  
-**Constraints**: Cookieless mode required; no backend; offline-capable (Clarity is non-critical); total bundle <1 MB gzipped  
-**Scale/Scope**: Single new module (~100-150 LOC), integration points in main.ts game flow  
-**Env Config**: Vite reads `.env` from root by default; CI writes to `./src/.env` — Vite config needs `envDir: 'src'` or CI adjustment
+<!--
+  ACTION REQUIRED: Replace the content in this section with the technical details
+  for the project. The structure here is presented in advisory capacity to guide
+  the iteration process.
+-->
+
+**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
+**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
+**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
+**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
+**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
+**Project Type**: [e.g., library/cli/web-service/mobile-app/compiler/desktop-app or NEEDS CLARIFICATION]  
+**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
+**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
+**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-| Principle | Impact | Status |
-|-----------|--------|--------|
-| **I. Browser-Only, Zero Backend** | Clarity SDK runs entirely client-side. Beacon data is sent to Clarity's CDN — this is not "dynamic server interaction" for gameplay. Game state stays browser-only. Asset loading from a static host is explicitly permitted. | **PASS** |
-| **II. Physics Realism** | No impact. Telemetry module does not touch physics simulation. | **PASS** |
-| **III. Cross-Device Responsive Play** | No impact. Clarity SDK is device-agnostic and does not modify UI layout or touch targets. | **PASS** |
-| **IV. All-Ages Fun & Accessibility** | No impact. Clarity is invisible to users. No UI changes. No content changes. | **PASS** |
-| **V. Test-First for Game Logic** | Clarity module is not game logic (no physics, scoring, or state). It is analogous to rendering/audio (exempt from TDD per constitution). Unit tests will verify the telemetry wrapper's guard logic (missing project ID, blocked SDK). | **PASS** |
-| **Technology: TypeScript strict** | New module will be TypeScript strict. Type declarations for Clarity API needed. | **PASS** |
-| **Technology: Bundle <1 MB** | Clarity SDK is ~6 KB gzipped. Well within budget. | **PASS** |
-| **Technology: Offline capable** | Clarity is non-critical. If blocked/offline, the game works normally. Clarity's own script handles offline gracefully. | **PASS** |
-
-**Gate result: ALL PASS** — no violations, no justifications needed.
+[Gates determined based on constitution file]
 
 ## Project Structure
 
 ### Documentation (this feature)
 
 ```text
-specs/006-clarity-telemetry/
-├── plan.md              # This file
-├── research.md          # Phase 0 output
-├── data-model.md        # Phase 1 output
-├── quickstart.md        # Phase 1 output
-├── contracts/           # Phase 1 output
-└── tasks.md             # Phase 2 output (NOT created by /speckit.plan)
+specs/[###-feature]/
+├── plan.md              # This file (/speckit.plan command output)
+├── research.md          # Phase 0 output (/speckit.plan command)
+├── data-model.md        # Phase 1 output (/speckit.plan command)
+├── quickstart.md        # Phase 1 output (/speckit.plan command)
+├── contracts/           # Phase 1 output (/speckit.plan command)
+└── tasks.md             # Phase 2 output (/speckit.tasks command - NOT created by /speckit.plan)
 ```
 
 ### Source Code (repository root)
+<!--
+  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
+  for this feature. Delete unused options and expand the chosen structure with
+  real paths (e.g., apps/admin, packages/something). The delivered plan must
+  not include Option labels.
+-->
 
 ```text
+# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
 src/
-├── telemetry/
-│   └── clarity.ts       # NEW — Clarity SDK wrapper (init, event helpers, guard logic)
-├── main.ts              # MODIFIED — import and wire telemetry at game lifecycle points
-├── types/
-│   └── clarity.d.ts     # NEW — Type declarations for Clarity global API
-└── ...                  # Existing modules unchanged
+├── models/
+├── services/
+├── cli/
+└── lib/
 
 tests/
+├── contract/
+├── integration/
 └── unit/
-    └── telemetry/
-        └── clarity.test.ts  # NEW — Unit tests for guard logic, event dispatch
+
+# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
+backend/
+├── src/
+│   ├── models/
+│   ├── services/
+│   └── api/
+└── tests/
+
+frontend/
+├── src/
+│   ├── components/
+│   ├── pages/
+│   └── services/
+└── tests/
+
+# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
+api/
+└── [same as backend above]
+
+ios/ or android/
+└── [platform-specific structure: feature modules, UI flows, platform tests]
 ```
 
-**Structure Decision**: Single new `src/telemetry/` module following the existing pattern (audio/, rendering/, input/ are all peer directories). A thin wrapper isolates all Clarity SDK calls behind a typed interface, making it easy to mock in tests and swap if needed.
+**Structure Decision**: [Document the selected structure and reference the real
+directories captured above]
 
 ## Complexity Tracking
 
-> No constitution violations — this section is intentionally empty.
+> **Fill ONLY if Constitution Check has violations that must be justified**
+
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|-----------|------------|-------------------------------------|
+| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
+| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |

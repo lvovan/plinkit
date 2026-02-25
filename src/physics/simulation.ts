@@ -138,7 +138,7 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
     return true;
   }
 
-  step(): PhysicsStepResult {
+  step(timeScale?: number): PhysicsStepResult {
     if (!this.board || !this.config) {
       throw new Error('World not created');
     }
@@ -148,7 +148,8 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
 
     // Step the world
     const { fixedTimestep, velocityIterations, positionIterations, maxAngularVelocity } = this.config.physics;
-    this.board.world.step(fixedTimestep, velocityIterations, positionIterations);
+    const effectiveTimestep = fixedTimestep * (timeScale ?? 1.0);
+    this.board.world.step(effectiveTimestep, velocityIterations, positionIterations);
 
     // Clamp angular velocity for all pucks
     for (const puck of this.board.pucks) {

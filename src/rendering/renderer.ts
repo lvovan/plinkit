@@ -1,6 +1,7 @@
 import type { Renderer, RenderState, ParticleType } from '@/types/contracts';
 import type { BoardLayout } from '@/types/index';
 import { EffectsManager } from './effects';
+import { BackgroundManager } from './background';
 
 /**
  * Canvas 2D renderer for the Plinko board.
@@ -27,6 +28,9 @@ export class CanvasRenderer implements Renderer {
   // Effects manager for flashes, slashes, score pops
   private effects: EffectsManager | null = null;
 
+  // Background manager for procedural countryside art
+  public background = new BackgroundManager();
+
   /** Set the effects manager for rendering visual effects. */
   setEffectsManager(effects: EffectsManager): void {
     this.effects = effects;
@@ -37,6 +41,8 @@ export class CanvasRenderer implements Renderer {
     this.ctx = canvas.getContext('2d')!;
     this.layout = layout;
     this.computeTransform();
+    const rect = canvas.getBoundingClientRect();
+    this.background.init(Math.round(rect.width), Math.round(rect.height));
   }
 
   resize(): void {
@@ -49,6 +55,7 @@ export class CanvasRenderer implements Renderer {
     this.ctx = this.canvas.getContext('2d')!;
     this.ctx.scale(dpr, dpr);
     this.computeTransform();
+    this.background.setSize(Math.round(rect.width), Math.round(rect.height));
   }
 
   private computeTransform(): void {
@@ -101,9 +108,9 @@ export class CanvasRenderer implements Renderer {
     ctx.save();
     ctx.translate(shakeX, shakeY);
 
-    // Clear
-    ctx.fillStyle = '#1a1a2e';
-    ctx.fillRect(-shakeX, -shakeY, rect.width, rect.height);
+    // Draw procedural background
+    this.background.update(1 / 60);
+    this.background.composite(ctx, rect.width, rect.height);
 
     // Draw board background
     const boardTL = this.worldToCanvas(-this.layout.boardWidth / 2, this.layout.boardHeight / 2);

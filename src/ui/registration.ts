@@ -30,6 +30,7 @@ export class RegistrationOverlay {
             <button class="btn add-player-btn" type="button">+ Add Player</button>
             <button class="btn start-btn" type="button" disabled>Start Game</button>
           </div>
+          <p class="reg-attribution">©️ Luc Vo Van, 2026 – Built with AI</p>
         </div>
       `;
 
@@ -128,6 +129,8 @@ export class RegistrationOverlay {
       .add-player-btn { background: #333; color: #ccc; }
       .start-btn { background: #e63946; color: #fff; font-weight: bold; }
       .start-btn:disabled { opacity: 0.4; cursor: default; }
+      .reg-attribution { margin-top: 1.5rem; font-size: 0.75rem; color: #888;
+        text-align: center; word-wrap: break-word; overflow-wrap: break-word; }
     `;
     el.appendChild(style);
   }
