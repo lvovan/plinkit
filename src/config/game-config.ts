@@ -1,4 +1,4 @@
-import type { GameConfig, BoardLayout, PhysicsConfig, ShoveConfig } from '@/types/index';
+import type { GameConfig, BoardLayout, PhysicsConfig, ShoveConfig, ScoringConfig } from '@/types/index';
 
 // ---- Board Layout ----
 
@@ -40,6 +40,13 @@ export const DEFAULT_SHOVE_CONFIG: ShoveConfig = {
   shoveZoneRowLimit: 9,        // shoves allowed only above row 9
 };
 
+// ---- Scoring Config ----
+
+export const DEFAULT_SCORING_CONFIG: ScoringConfig = {
+  bounceMultiplierRate: 1.15,
+  bounceMultiplierCap: 10.0,
+};
+
 // ---- Full Game Config ----
 
 export const DEFAULT_GAME_CONFIG: GameConfig = {
@@ -47,6 +54,7 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
   boardLayout: DEFAULT_BOARD_LAYOUT,
   physics: DEFAULT_PHYSICS_CONFIG,
   shoveConfig: DEFAULT_SHOVE_CONFIG,
+  scoring: DEFAULT_SCORING_CONFIG,
   turnTimerSeconds: 15,
   maxTieBreakers: 10,
 };
@@ -70,6 +78,10 @@ export function createGameConfig(overrides?: Partial<GameConfig>): GameConfig {
     shoveConfig: {
       ...DEFAULT_SHOVE_CONFIG,
       ...overrides.shoveConfig,
+    },
+    scoring: {
+      ...DEFAULT_SCORING_CONFIG,
+      ...overrides.scoring,
     },
   };
 }

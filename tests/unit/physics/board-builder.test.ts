@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { BoardBuilder } from '@/physics/board-builder';
 import { DEFAULT_GAME_CONFIG } from '@/config/game-config';
+import { computePinPositions } from '@/config/board-geometry';
 
 describe('BoardBuilder', () => {
   let builder: BoardBuilder;
@@ -52,6 +53,38 @@ describe('BoardBuilder', () => {
     it('should start with zero pucks', () => {
       const board = builder.build(DEFAULT_GAME_CONFIG);
       expect(board.pucks.length).toBe(0);
+    });
+  });
+
+  describe('pin staggering (en quinconce)', () => {
+    it('should offset odd-row pins by half pin-spacing relative to even rows', () => {
+      const layout = DEFAULT_GAME_CONFIG.boardLayout;
+      const pins = computePinPositions(layout);
+
+      // Collect x positions for row 0 (even) and row 1 (odd)
+      const row0 = pins.filter(p => p.row === 0).map(p => p.x).sort((a, b) => a - b);
+      const row1 = pins.filter(p => p.row === 1).map(p => p.x).sort((a, b) => a - b);
+
+      // Even row should have bucketCount pins, odd row bucketCount - 1
+      expect(row0.length).toBe(layout.bucketCount);
+      expect(row1.length).toBe(layout.bucketCount - 1);
+
+      // Each odd-row pin should sit halfway between two adjacent even-row pins
+      for (let i = 0; i < row1.length; i++) {
+        const midpoint = (row0[i] + row0[i + 1]) / 2;
+        expect(row1[i]).toBeCloseTo(midpoint, 5);
+      }
+    });
+
+    it('should NOT have vertically aligned pins between consecutive rows', () => {
+      const pins = computePinPositions(DEFAULT_GAME_CONFIG.boardLayout);
+      const row0xs = new Set(pins.filter(p => p.row === 0).map(p => Math.round(p.x * 1000)));
+      const row1xs = pins.filter(p => p.row === 1).map(p => Math.round(p.x * 1000));
+
+      // No odd-row x should match any even-row x
+      for (const x of row1xs) {
+        expect(row0xs.has(x)).toBe(false);
+      }
     });
   });
 });

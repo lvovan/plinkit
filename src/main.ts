@@ -13,7 +13,7 @@ import { VisibilityHandler } from '@/core/visibility';
 import { DEFAULT_GAME_CONFIG } from '@/config/game-config';
 import { computePinPositions, computeBucketBoundaries } from '@/config/board-geometry';
 import type { RenderState, TurnResult, PlayerRegistration } from '@/types/contracts';
-import type { PuckStyle, Player } from '@/types/index';
+import type { PuckStyle, Player, ScoringConfig } from '@/types/index';
 
 // ---- Bootstrap ----
 
@@ -30,7 +30,7 @@ const sim = new PhysicsSimulationImpl();
 sim.createWorld(config);
 
 // --- Scoring ---
-const scoring = new ScoringEngine(layout);
+const scoring = new ScoringEngine(layout, config.scoring);
 
 // --- Renderer ---
 const renderer = new CanvasRenderer();
@@ -50,6 +50,7 @@ let resizeTimer: ReturnType<typeof setTimeout> | null = null;
 // --- Input ---
 const input = new BasicInputManager();
 input.setWorldWidth(layout.boardWidth);
+input.setBoardHeight(layout.boardHeight);
 input.attach(canvas);
 
 // --- State Machine & Overlays ---
@@ -61,6 +62,9 @@ const audioManager = new GameAudioManager();
 
 // --- Effects ---
 const effects = new EffectsManager();
+
+// Wire effects into the renderer
+renderer.setEffectsManager(effects);
 
 // --- Visibility ---
 const visibility = new VisibilityHandler({
@@ -96,6 +100,31 @@ let currentPuckStyle: PuckStyle = { color: '#E63946', pattern: 'solid', label: '
 let shovesUsed = 0;
 let shovesDisabled = false;
 let gameRunning = false;
+let bounceCount = 0;
+
+// ---- Audio rate limiter ----
+const recentSoundTimestamps: number[] = [];
+const SOUND_RATE_LIMIT = 4;      // max sounds per window
+const SOUND_RATE_WINDOW_MS = 50;  // window size in ms
+
+function shouldAttenuateSound(): boolean {
+  const now = performance.now();
+  // Remove timestamps outside the window
+  while (recentSoundTimestamps.length > 0 && now - recentSoundTimestamps[0] > SOUND_RATE_WINDOW_MS) {
+    recentSoundTimestamps.shift();
+  }
+  recentSoundTimestamps.push(now);
+  return recentSoundTimestamps.length > SOUND_RATE_LIMIT;
+}
+
+// ---- Bounce multiplier formatter ----
+function formatMultiplier(count: number, scoringConfig: ScoringConfig): string {
+  const multiplier = Math.min(
+    scoringConfig.bounceMultiplierRate ** count,
+    scoringConfig.bounceMultiplierCap,
+  );
+  return `${multiplier.toFixed(1)}×`;
+}
 
 // ---- Turn Timer ----
 const turnTimer = new TurnTimer(
@@ -147,7 +176,21 @@ input.onFlick((vector) => {
     if (applied) {
       shovesUsed++;
       audioManager.play('shove');
-      renderer.shake(3, 150);
+
+      // Proportional shake: 5 × (forceMagnitude / maxForceMagnitude)
+      const forceMag = Math.sqrt(vector.dx * vector.dx + vector.dy * vector.dy);
+      const shakeIntensity = 5 * (forceMag / config.shoveConfig.maxForceMagnitude);
+      renderer.shake(shakeIntensity, 150);
+
+      // Slash effect along shove direction
+      const puckState = sim.getPuckState(activePuckId);
+      const normLen = forceMag || 1;
+      effects.addSlashEffect(
+        puckState.position.x, puckState.position.y,
+        vector.dx / normLen, vector.dy / normLen,
+        forceMag,
+      );
+
       overlays.updateShoveCounter(
         config.shoveConfig.maxShovesPerTurn - shovesUsed,
         config.shoveConfig.maxShovesPerTurn,
@@ -166,34 +209,48 @@ const loop = new GameLoop({
 
     const result = sim.step();
 
-    // Process collision events — trigger audio and particle effects
+    // Process collision events — trigger audio and visual effects
     for (const collision of result.collisions) {
-      if (collision.type === 'pinHit') {
+      // Handle ALL collision types: pinHit, puckHit, wallHit
+      bounceCount++;
+
+      // Audio with rate limiting
+      if (!shouldAttenuateSound()) {
         audioManager.play('pinHit', { pitchVariation: 0.15 });
-        renderer.emitParticles(collision.x, collision.y, 'pinHit');
       }
+
+      // Collision flash with current multiplier text
+      effects.addCollisionFlash(
+        collision.x,
+        collision.y,
+        formatMultiplier(bounceCount, config.scoring),
+      );
     }
 
     // Check for settled pucks
     for (const settled of result.settledPucks) {
-      const score = scoring.getScoreForBucket(settled.bucketIndex);
+      // Calculate score with bounce multiplier
+      const scoreBreakdown = scoring.calculateRoundScore(settled.bucketIndex, bounceCount);
 
       // Audio and visual feedback for bucket landing
       audioManager.play('bucketLand');
       const puckState = sim.getPuckState(settled.puckId);
       renderer.emitParticles(puckState.position.x, puckState.position.y, 'bucketLand');
-      effects.triggerScorePop(puckState.position.x, puckState.position.y, score);
+      effects.triggerScorePop(puckState.position.x, puckState.position.y, scoreBreakdown);
 
       // Build turn result and complete the turn
       const turnResult: TurnResult = {
         dropPositionX: dropX,
         shoves: [],
         bucketIndex: settled.bucketIndex,
-        scoreEarned: score,
+        scoreEarned: scoreBreakdown.totalScore,
+        bounceCount,
+        scoreBreakdown,
         wasTimeout: shovesDisabled, // shovesDisabled is set on timeout
       };
 
       stateMachine.completeTurn(turnResult);
+      bounceCount = 0; // Reset for next turn
       const state = stateMachine.getState();
       overlays.updateScoreboard(state.players);
 
@@ -242,6 +299,13 @@ const loop = new GameLoop({
       shoveZoneY,
       activePuckId,
       interpolationAlpha: alpha,
+      // Ghost puck shown before drop; default dropX to center (0) per FR-014
+      ...((!puckDropped && currentPlayer) ? {
+        dropIndicator: {
+          x: Math.max(-layout.boardWidth / 2, Math.min(layout.boardWidth / 2, dropX)),
+          style: currentPuckStyle,
+        },
+      } : {}),
     };
 
     renderer.drawFrame(state);

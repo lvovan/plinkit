@@ -113,8 +113,10 @@ Static board geometry.
 | boardHeight | `number` | — | Total board height (world units) |
 
 **Derived geometry**:
-- Pin positions are computed from `pinRows`, `pinSpacing`, and the
-  staggered offset pattern (even rows offset by `pinSpacing / 2`).
+- Pin positions are arranged in staggered rows ("en quinconce"): even rows
+  have `bucketCount` pins, odd rows have `bucketCount - 1` pins. Both are
+  horizontally centered; the reduced count on odd rows naturally offsets
+  them by half `pinSpacing` relative to even rows — no explicit offset is added.
 - Bucket positions are computed from `bucketCount` and `boardWidth`.
 - Shove zone boundary Y = pin row 9's Y position.
 

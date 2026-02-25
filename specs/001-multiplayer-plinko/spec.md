@@ -340,9 +340,10 @@ are fully visible and usable on both without scrolling.
 **Board & Physics**
 
 - **FR-006**: The game MUST display a Plinko board with 12 rows of
-  evenly spaced pins and 9 scoring buckets at the bottom. Pins in
-  alternating rows are offset by half the pin spacing (standard
-  staggered Plinko layout).
+  evenly spaced pins and 9 scoring buckets at the bottom. Pins MUST
+  be arranged in staggered rows ("en quinconce"): even rows have
+  `bucketCount` pins and odd rows have `bucketCount - 1` pins, both
+  centered, so that odd-row pins sit halfway between even-row pins.
 - **FR-007**: The physics simulation MUST be deterministic — identical
   inputs (drop position, shove vectors) MUST always produce identical
   outcomes.

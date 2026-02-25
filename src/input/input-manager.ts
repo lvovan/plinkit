@@ -14,6 +14,7 @@ export class BasicInputManager implements InputManager {
 
   /** World-space transform: how to convert canvas pixel X → world X */
   private worldWidth = 10;  // default board width
+  private boardHeight = 14; // default board height
 
   /** Flick detection state */
   private pointerHistory: Array<{ x: number; y: number; t: number }> = [];
@@ -21,6 +22,10 @@ export class BasicInputManager implements InputManager {
 
   setWorldWidth(width: number): void {
     this.worldWidth = width;
+  }
+
+  setBoardHeight(height: number): void {
+    this.boardHeight = height;
   }
 
   attach(canvas: HTMLCanvasElement): void {
@@ -58,12 +63,27 @@ export class BasicInputManager implements InputManager {
     this.flickEnabled = enabled;
   }
 
-  /** Convert canvas pixel X to world X (centered at 0) */
+  /** Convert canvas pixel X to world X (centered at 0).
+   *  Mirrors the renderer's padding + aspect-ratio fitting so that
+   *  pointer position maps to the correct world coordinate. */
   private canvasToWorldX(canvasX: number): number {
     if (!this.canvas) return 0;
     const rect = this.canvas.getBoundingClientRect();
-    const normalizedX = (canvasX - rect.left) / rect.width; // 0..1
-    return (normalizedX - 0.5) * this.worldWidth;
+    const canvasW = rect.width;
+    const canvasH = rect.height;
+
+    // Match renderer's computeTransform: 5% padding, fit-to-aspect
+    const padFraction = 0.05;
+    const availW = canvasW * (1 - 2 * padFraction);
+    const availH = canvasH * (1 - 2 * padFraction);
+    const scaleX = availW / this.worldWidth;
+    const scaleY = availH / this.boardHeight;
+    const scale = Math.min(scaleX, scaleY);
+
+    // The board is centered in the canvas; offsetX = canvasW / 2
+    const offsetX = canvasW / 2;
+    const pixelX = canvasX - rect.left;
+    return (pixelX - offsetX) / scale;
   }
 
   private onPointerDown = (e: PointerEvent): void => {

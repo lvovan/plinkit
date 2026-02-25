@@ -50,4 +50,61 @@ describe('ScoringEngine', () => {
       expect(score1 + score2).toBe(20000);
     });
   });
+
+  describe('calculateRoundScore()', () => {
+    it('should return multiplier 1.0 and totalScore equals baseScore for 0 bounces', () => {
+      const engine = new ScoringEngine(DEFAULT_GAME_CONFIG.boardLayout, DEFAULT_GAME_CONFIG.scoring);
+      const result = engine.calculateRoundScore(4, 0); // bucket 4 = 10000
+      expect(result.baseScore).toBe(10000);
+      expect(result.bounceCount).toBe(0);
+      expect(result.multiplier).toBe(1.0);
+      expect(result.totalScore).toBe(10000);
+    });
+
+    it('should return multiplier ≈2.01 for 5 bounces', () => {
+      const engine = new ScoringEngine(DEFAULT_GAME_CONFIG.boardLayout, DEFAULT_GAME_CONFIG.scoring);
+      const result = engine.calculateRoundScore(0, 5); // bucket 0 = 100
+      expect(result.multiplier).toBeCloseTo(2.01, 1);
+      expect(result.totalScore).toBe(Math.floor(100 * result.multiplier));
+    });
+
+    it('should return multiplier ≈4.05 for 10 bounces', () => {
+      const engine = new ScoringEngine(DEFAULT_GAME_CONFIG.boardLayout, DEFAULT_GAME_CONFIG.scoring);
+      const result = engine.calculateRoundScore(0, 10);
+      expect(result.multiplier).toBeCloseTo(4.05, 1);
+    });
+
+    it('should cap multiplier at 10.0 for 17+ bounces', () => {
+      const engine = new ScoringEngine(DEFAULT_GAME_CONFIG.boardLayout, DEFAULT_GAME_CONFIG.scoring);
+      const result17 = engine.calculateRoundScore(0, 17);
+      expect(result17.multiplier).toBe(10.0);
+
+      const result20 = engine.calculateRoundScore(0, 20);
+      expect(result20.multiplier).toBe(10.0);
+
+      const result50 = engine.calculateRoundScore(0, 50);
+      expect(result50.multiplier).toBe(10.0);
+    });
+
+    it('should always return totalScore as floor(baseScore × multiplier)', () => {
+      const engine = new ScoringEngine(DEFAULT_GAME_CONFIG.boardLayout, DEFAULT_GAME_CONFIG.scoring);
+      // bucket 1 = 500, 3 bounces → 1.15^3 = 1.521..., 500 × 1.521 = 760.54 → 760
+      const result = engine.calculateRoundScore(1, 3);
+      expect(result.totalScore).toBe(Math.floor(500 * result.multiplier));
+      expect(Number.isInteger(result.totalScore)).toBe(true);
+    });
+
+    it('should throw RangeError for invalid bucketIndex', () => {
+      const engine = new ScoringEngine(DEFAULT_GAME_CONFIG.boardLayout, DEFAULT_GAME_CONFIG.scoring);
+      expect(() => engine.calculateRoundScore(-1, 5)).toThrow(RangeError);
+      expect(() => engine.calculateRoundScore(9, 5)).toThrow(RangeError);
+    });
+
+    it('should satisfy SC-003: 10 bounces scores at least 2× more than 5 bounces', () => {
+      const engine = new ScoringEngine(DEFAULT_GAME_CONFIG.boardLayout, DEFAULT_GAME_CONFIG.scoring);
+      const result5 = engine.calculateRoundScore(4, 5);
+      const result10 = engine.calculateRoundScore(4, 10);
+      expect(result10.totalScore).toBeGreaterThanOrEqual(result5.totalScore * 2);
+    });
+  });
 });
