@@ -81,14 +81,21 @@ button:focus-visible, input:focus-visible, [role="button"]:focus-visible {
   border-radius: 3px;
 }
 
-/* Audio toggle buttons */
-.audio-toggles {
+/* Unified Game HUD (upper-left panel) */
+.game-hud {
   position: absolute;
   top: 8px;
-  right: 8px;
+  left: 8px;
   display: flex;
+  flex-direction: column;
   gap: 6px;
   z-index: 60;
+  pointer-events: none;
+}
+
+.hud-toggle-row {
+  display: flex;
+  gap: 6px;
   pointer-events: auto;
 }
 

@@ -43,6 +43,7 @@ describe('Tie-Breaker Logic', () => {
       shoveOffsetFraction: 0.35,
     },
     scoring: { bounceMultiplierRate: 1.15, bounceMultiplierCap: 10.0 },
+    slowMotion: { targetScale: 0.3, enterDuration: 0.25, holdDuration: 1.5, exitDuration: 0.4 },
     turnTimerSeconds: 15,
     maxTieBreakers: 10,
   };

@@ -1,27 +1,23 @@
 import type { Player } from '@/types/index';
 import type { PlayerRegistration, ResultsAction, UIOverlayManager } from '@/types/contracts';
 import { RegistrationOverlay } from './registration';
-import { ScoreboardOverlay } from './scoreboard';
-import { TurnIndicatorOverlay } from './turn-indicator';
+import { GameHUD } from './game-hud';
 import { ResultsOverlay } from './results';
 
 /**
  * Coordinates all UI overlays — show/hide by game phase.
+ * Delegates toggle buttons, turn indicator, and scoreboard to a unified GameHUD.
  */
 export class OverlayManager implements UIOverlayManager {
   private registration: RegistrationOverlay;
-  private scoreboard: ScoreboardOverlay;
-  private turnIndicator: TurnIndicatorOverlay;
+  private hud: GameHUD;
   private results: ResultsOverlay;
   private container: HTMLElement;
-  private sfxToggleBtn: HTMLButtonElement | null = null;
-  private musicToggleBtn: HTMLButtonElement | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
     this.registration = new RegistrationOverlay(container);
-    this.scoreboard = new ScoreboardOverlay(container);
-    this.turnIndicator = new TurnIndicatorOverlay(container);
+    this.hud = new GameHUD(container);
     this.results = new ResultsOverlay(container);
   }
 
@@ -31,19 +27,19 @@ export class OverlayManager implements UIOverlayManager {
   }
 
   updateScoreboard(players: Player[]): void {
-    this.scoreboard.update(players);
+    this.hud.updateScoreboard(players);
   }
 
   showTurnIndicator(player: Player, timerSeconds: number): void {
-    this.turnIndicator.show(player, timerSeconds);
+    this.hud.showTurnIndicator(player, timerSeconds);
   }
 
   updateTimer(secondsRemaining: number): void {
-    this.turnIndicator.updateTimer(secondsRemaining);
+    this.hud.updateTimer(secondsRemaining);
   }
 
   async showResults(players: Player[], winner: Player | Player[], isTieBreaker = false): Promise<ResultsAction> {
-    this.turnIndicator.hide();
+    this.hud.hideTurnIndicator();
     return this.results.show(players, winner, isTieBreaker);
   }
 
@@ -82,40 +78,23 @@ export class OverlayManager implements UIOverlayManager {
 
   hideAll(): void {
     this.registration.hide();
-    this.scoreboard.hide();
-    this.turnIndicator.hide();
+    this.hud.hideGameplay();
     this.results.hide();
   }
 
   initAudioToggles(onToggleSfx: () => void, onToggleMusic: () => void): void {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'audio-toggles';
-
-    this.sfxToggleBtn = document.createElement('button');
-    this.sfxToggleBtn.className = 'audio-toggle-btn sfx-toggle';
-    this.sfxToggleBtn.setAttribute('aria-label', 'Toggle sound effects');
-    this.sfxToggleBtn.textContent = '🔊';
-    this.sfxToggleBtn.addEventListener('click', onToggleSfx);
-
-    this.musicToggleBtn = document.createElement('button');
-    this.musicToggleBtn.className = 'audio-toggle-btn music-toggle';
-    this.musicToggleBtn.setAttribute('aria-label', 'Toggle music');
-    this.musicToggleBtn.textContent = '🎵';
-    this.musicToggleBtn.addEventListener('click', onToggleMusic);
-
-    wrapper.appendChild(this.sfxToggleBtn);
-    wrapper.appendChild(this.musicToggleBtn);
-    this.container.appendChild(wrapper);
+    this.hud.initAudioToggles(onToggleSfx, onToggleMusic);
   }
 
   updateAudioToggleState(sfxMuted: boolean, musicMuted: boolean): void {
-    if (this.sfxToggleBtn) {
-      this.sfxToggleBtn.textContent = sfxMuted ? '🔇' : '🔊';
-      this.sfxToggleBtn.classList.toggle('muted', sfxMuted);
-    }
-    if (this.musicToggleBtn) {
-      this.musicToggleBtn.textContent = musicMuted ? '🎵' : '🎵';
-      this.musicToggleBtn.classList.toggle('muted', musicMuted);
-    }
+    this.hud.updateAudioToggleState(sfxMuted, musicMuted);
+  }
+
+  initAnimationToggle(onToggle: (enabled: boolean) => void): void {
+    this.hud.initAnimationToggle(onToggle);
+  }
+
+  updateAnimationToggleState(animationEnabled: boolean): void {
+    this.hud.updateAnimationToggleState(animationEnabled);
   }
 }

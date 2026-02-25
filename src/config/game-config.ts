@@ -1,4 +1,4 @@
-import type { GameConfig, BoardLayout, PhysicsConfig, ShoveConfig, ScoringConfig } from '@/types/index';
+import type { GameConfig, BoardLayout, PhysicsConfig, ShoveConfig, ScoringConfig, SlowMotionConfig } from '@/types/index';
 
 // ---- Board Layout ----
 
@@ -49,6 +49,15 @@ export const DEFAULT_SCORING_CONFIG: ScoringConfig = {
   bounceMultiplierCap: 10.0,
 };
 
+// ---- Slow-Motion Config ----
+
+export const DEFAULT_SLOW_MOTION_CONFIG: SlowMotionConfig = {
+  targetScale: 0.3,
+  enterDuration: 0.25,
+  holdDuration: 1.5,
+  exitDuration: 0.4,
+};
+
 // ---- Full Game Config ----
 
 export const DEFAULT_GAME_CONFIG: GameConfig = {
@@ -57,6 +66,7 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
   physics: DEFAULT_PHYSICS_CONFIG,
   shoveConfig: DEFAULT_SHOVE_CONFIG,
   scoring: DEFAULT_SCORING_CONFIG,
+  slowMotion: DEFAULT_SLOW_MOTION_CONFIG,
   turnTimerSeconds: 15,
   maxTieBreakers: 10,
 };
@@ -84,6 +94,10 @@ export function createGameConfig(overrides?: Partial<GameConfig>): GameConfig {
     scoring: {
       ...DEFAULT_SCORING_CONFIG,
       ...overrides.scoring,
+    },
+    slowMotion: {
+      ...DEFAULT_SLOW_MOTION_CONFIG,
+      ...overrides.slowMotion,
     },
   };
 }

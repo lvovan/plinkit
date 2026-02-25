@@ -10,11 +10,14 @@ import { GameAudioManager } from '@/audio/audio-manager';
 import { GameMusicManager } from '@/audio/music-manager';
 import { EffectsManager } from '@/rendering/effects';
 import { VisibilityHandler } from '@/core/visibility';
+import { TutorialIndicator } from '@/ui/tutorial-indicator';
+import { createSlowMotionState, triggerSlowMotion, updateSlowMotion, resetSlowMotion } from '@/core/slow-motion';
 import { initTelemetry, trackEvent, setTag } from '@/telemetry/clarity';
 import { DEFAULT_GAME_CONFIG } from '@/config/game-config';
 import { computePinPositions, computeBucketBoundaries } from '@/config/board-geometry';
 import type { RenderState, TurnResult, PlayerRegistration } from '@/types/contracts';
 import type { PuckStyle, Player, ScoringConfig } from '@/types/index';
+import type { SlowMotionState } from '@/types/index';
 
 // ---- Bootstrap ----
 
@@ -65,6 +68,9 @@ const musicManager = new GameMusicManager();
 // --- Effects ---
 const effects = new EffectsManager();
 
+// --- Tutorial indicator ---
+const tutorial = new TutorialIndicator(overlayContainer);
+
 // Wire effects into the renderer
 renderer.setEffectsManager(effects);
 
@@ -103,6 +109,8 @@ let shovesDisabled = false;
 let gameRunning = false;
 let bounceCount = 0;
 const puckStyleMap = new Map<string, PuckStyle>();
+let slowMotionState: SlowMotionState = createSlowMotionState();
+let isFirstGame = true;
 
 // ---- Audio rate limiter ----
 const recentSoundTimestamps: number[] = [];
@@ -125,7 +133,7 @@ function formatMultiplier(count: number, scoringConfig: ScoringConfig): string {
     scoringConfig.bounceMultiplierRate ** count,
     scoringConfig.bounceMultiplierCap,
   );
-  return `${multiplier.toFixed(1)}×`;
+  return `×${multiplier.toFixed(1)}`;
 }
 
 // ---- Turn Timer ----
@@ -150,10 +158,14 @@ const turnTimer = new TurnTimer(
 // ---- Input handlers ----
 input.onDropPositionChange((x: number) => {
   dropX = x;
+  // Dismiss the tutorial indicator on first interaction
+  if (tutorial.isVisible()) tutorial.dismiss();
 });
 
 input.onRelease(() => {
   if (!puckDropped && currentPlayer) {
+    // Dismiss tutorial on puck drop
+    if (tutorial.isVisible()) tutorial.dismiss();
     turnTimer.stop();
     activePuckId = sim.dropPuck(dropX, currentPlayer.id);
     puckStyleMap.set(activePuckId, currentPuckStyle);
@@ -203,7 +215,23 @@ const loop = new GameLoop({
   onStep() {
     if (!puckDropped || !gameRunning) return;
 
-    const result = sim.step();
+    // Update slow-motion state
+    const dt = config.physics.fixedTimestep;
+    slowMotionState = updateSlowMotion(slowMotionState, dt, config.slowMotion);
+    const timeScale = slowMotionState.timeScale;
+
+    // Apply timeScale to music
+    musicManager.setTimeScale(timeScale);
+
+    const result = sim.step(timeScale);
+
+    // Check if active puck crossed below shove zone — trigger slow-motion
+    if (activePuckId && slowMotionState.phase === 'normal' && !slowMotionState.triggeredThisTurn) {
+      const puckState = sim.getPuckState(activePuckId);
+      if (!puckState.isInShoveZone && !puckState.isSettled) {
+        slowMotionState = triggerSlowMotion(slowMotionState);
+      }
+    }
 
     // Process collision events — trigger audio and visual effects
     for (const collision of result.collisions) {
@@ -212,7 +240,7 @@ const loop = new GameLoop({
 
       // Audio with rate limiting
       if (!shouldAttenuateSound()) {
-        audioManager.play('pinHit', { pitchVariation: 0.15 });
+        audioManager.play('pinHit', { pitchVariation: 0.15, timeScale });
       }
 
       // Collision flash with current multiplier text
@@ -279,6 +307,13 @@ const loop = new GameLoop({
 
       // Audio and visual feedback for bucket landing
       audioManager.play('bucketLand');
+
+      // Play jackpot sound for center (highest-scoring) bucket
+      const middleBucketIndex = Math.floor(layout.bucketScores.length / 2);
+      if (settled.bucketIndex === middleBucketIndex) {
+        audioManager.play('jackpotBucket');
+      }
+
       const puckState = sim.getPuckState(settled.puckId);
       renderer.emitParticles(puckState.position.x, puckState.position.y, 'bucketLand');
       effects.triggerScorePop(puckState.position.x, puckState.position.y, scoreBreakdown);
@@ -371,8 +406,12 @@ function startNextTurn(): void {
   currentPlayer = ctx.player;
   currentPuckStyle = ctx.player.puckStyle;
   shovesDisabled = false;
+  slowMotionState = resetSlowMotion();
+  musicManager.setTimeScale(1.0);
   overlays.showTurnIndicator(ctx.player, ctx.timerSeconds);
   overlays.updateTimer(ctx.timerSeconds);
+  // Show tutorial on first turn of first round of first game
+  tutorial.show(ctx.roundNumber, ctx.turnNumber, isFirstGame);
   // Pucks persist as collidable objects — only cleared at game end / tie-breaker
   turnTimer.reset();
   turnTimer.start();
@@ -391,6 +430,7 @@ async function handleGameEnd(players: Player[], winner: Player | Player[], isTie
 
   if (action === 'playAgain') {
     trackEvent('replay');
+    isFirstGame = false;
     stateMachine.resetForReplay();
     sim.clearPucks();
     puckStyleMap.clear();
@@ -400,6 +440,8 @@ async function handleGameEnd(players: Player[], winner: Player | Player[], isTie
     overlays.updateScoreboard(stateMachine.getState().players);
   } else if (action === 'newPlayers') {
     trackEvent('new_session');
+    isFirstGame = true;
+    tutorial.reset();
     stateMachine.resetFull();
     sim.clearPucks();
     puckStyleMap.clear();
@@ -442,6 +484,12 @@ async function startGame(): Promise<void> {
       overlays.updateAudioToggleState(audioManager.isSfxMuted(), musicManager.isMuted());
     },
   );
+
+  // Initialize animation toggle button
+  overlays.initAnimationToggle((_enabled: boolean) => {
+    renderer.background.toggleAnimation();
+    overlays.updateAnimationToggleState(renderer.background.isAnimationEnabled());
+  });
 
   stateMachine.startSession(registrations, config);
 

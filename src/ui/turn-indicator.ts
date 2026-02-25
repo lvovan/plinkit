@@ -16,7 +16,7 @@ export class TurnIndicatorOverlay {
     this.el = document.createElement('div');
     this.el.className = 'turn-indicator';
     this.el.style.cssText = `
-      position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+      position: absolute; top: 8px; right: 8px;
       background: rgba(22, 33, 62, 0.9); padding: 8px 20px; border-radius: 8px;
       pointer-events: none; z-index: 50; text-align: center;
       font-size: 0.9rem; color: #e0e0e0;

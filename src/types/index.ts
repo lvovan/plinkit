@@ -5,6 +5,9 @@
 /** Game lifecycle phases */
 export type GamePhase = 'registration' | 'playing' | 'tieBreaker' | 'results' | 'ended';
 
+/** Slow-motion effect phases */
+export type SlowMotionPhase = 'normal' | 'entering' | 'slow' | 'exiting';
+
 /** Turn phases within a single turn */
 export type TurnPhase = 'aiming' | 'falling' | 'scored';
 
@@ -91,6 +94,7 @@ export interface GameConfig {
   turnTimerSeconds: number;
   maxTieBreakers: number;
   scoring: ScoringConfig;
+  slowMotion: SlowMotionConfig;
 }
 
 // ---- Turn Records ----
@@ -206,6 +210,32 @@ export interface SlashEffect {
   startTime: number;
   /** Lifetime in ms. Default: 400 */
   duration: number;
+}
+
+// ---- Slow-Motion ----
+
+/** Configuration for the slow-motion effect triggered below the shove line */
+export interface SlowMotionConfig {
+  /** Target time-scale during the 'slow' phase (0–1). Default: 0.3 */
+  targetScale: number;
+  /** Duration in seconds for the entering ease-out transition */
+  enterDuration: number;
+  /** Duration in seconds to hold at targetScale */
+  holdDuration: number;
+  /** Duration in seconds for the exiting ease-in transition */
+  exitDuration: number;
+}
+
+/** Runtime state of the slow-motion effect */
+export interface SlowMotionState {
+  /** Current phase of the slow-motion lifecycle */
+  phase: SlowMotionPhase;
+  /** Current time-scale factor (1.0 = normal, < 1.0 = slow) */
+  timeScale: number;
+  /** Elapsed time in seconds within the current phase */
+  phaseElapsed: number;
+  /** Whether slow-motion has already been triggered this turn */
+  triggeredThisTurn: boolean;
 }
 
 /** State for the pre-drop visual helper (ghost puck) */

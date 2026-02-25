@@ -7,6 +7,7 @@ import {
   playWinner,
   playTick,
   playTimeout,
+  playJackpotBucket,
 } from './synth-effects';
 
 /**
@@ -59,33 +60,37 @@ export class GameAudioManager implements AudioManager {
     this.initialized = true;
   }
 
-  play(name: SoundName, options?: { pitchVariation?: number }): void {
+  play(name: SoundName, options?: { pitchVariation?: number; timeScale?: number }): void {
     if (this.muted || !this.sfxGain) return;
 
     const ctx = this.ensureContext();
     const dest = this.sfxGain;
+    const ts = options?.timeScale;
 
     switch (name) {
       case 'drop':
-        playDrop(ctx, dest);
+        playDrop(ctx, dest, ts);
         break;
       case 'pinHit':
-        playPinHit(ctx, dest, options?.pitchVariation);
+        playPinHit(ctx, dest, options?.pitchVariation, ts);
         break;
       case 'shove':
-        playShove(ctx, dest);
+        playShove(ctx, dest, ts);
         break;
       case 'bucketLand':
-        playBucketLand(ctx, dest);
+        playBucketLand(ctx, dest, ts);
         break;
       case 'winner':
-        playWinner(ctx, dest);
+        playWinner(ctx, dest, ts);
         break;
       case 'tick':
-        playTick(ctx, dest);
+        playTick(ctx, dest, ts);
         break;
       case 'timeout':
-        playTimeout(ctx, dest);
+        playTimeout(ctx, dest, ts);
+        break;
+      case 'jackpotBucket':
+        playJackpotBucket(ctx, dest, ts);
         break;
     }
   }
