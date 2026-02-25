@@ -8,6 +8,8 @@ import {
   playTick,
   playTimeout,
   playJackpotBucket,
+  playAutoShove,
+  playCoinDing,
 } from './synth-effects';
 
 /**
@@ -91,6 +93,12 @@ export class GameAudioManager implements AudioManager {
         break;
       case 'jackpotBucket':
         playJackpotBucket(ctx, dest, ts);
+        break;
+      case 'autoShove':
+        playAutoShove(ctx, dest, ts);
+        break;
+      case 'coinDing':
+        playCoinDing(ctx, dest, ts);
         break;
     }
   }

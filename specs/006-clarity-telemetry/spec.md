@@ -36,8 +36,9 @@ As a product owner, I want key game events (game start, round completion, puck d
 
 1. **Given** a user completes player registration and starts a game, **When** the game session begins, **Then** a "game_start" event is sent to Clarity with the number of players.
 2. **Given** a player drops a puck, **When** the puck lands in a bucket, **Then** a "turn_complete" event is sent to Clarity with the bucket score and bounce count.
-3. **Given** a game ends with a winner, **When** the results screen is displayed, **Then** a "game_end" event is sent to Clarity with the winning score and number of rounds played.
-4. **Given** a player chooses "Play Again" or "New Players" after a game ends, **When** the action is taken, **Then** a "replay" or "new_session" event is sent to Clarity respectively.
+3. **Given** a player shoves a puck during a turn, **When** the shove is successfully applied, **Then** the shove is counted and the cumulative shove total is tracked for the session.
+4. **Given** a game ends with a winner, **When** the results screen is displayed, **Then** a "game_end" event is sent to Clarity with the winning score, number of rounds played, total shove count, and average shoves per round.
+5. **Given** a player chooses "Play Again" or "New Players" after a game ends, **When** the action is taken, **Then** a "replay" or "new_session" event is sent to Clarity respectively.
 
 ---
 
@@ -74,7 +75,8 @@ As a product owner, I want Clarity to capture engagement signals (session durati
 - **FR-004**: System MUST gracefully handle a missing or empty `VITE_CLARITY_PROJECT_ID` by skipping Clarity initialization entirely without throwing errors.
 - **FR-005**: System MUST send a custom "game_start" event to Clarity when a game session begins, including the player count.
 - **FR-006**: System MUST send a custom "turn_complete" event to Clarity when a puck settles in a bucket, including the bucket score and bounce count.
-- **FR-007**: System MUST send a custom "game_end" event to Clarity when the game concludes, including the final winning score and total rounds played.
+- **FR-007**: System MUST send a custom "game_end" event to Clarity when the game concludes, including the final winning score, total rounds played, total shove count, and average shoves per round.
+- **FR-007a**: System MUST track each successful player shove during the game session and include the cumulative count (`totalShoves`) and average per round (`avgShovesPerRound`) as Clarity tags on the `game_end` event.
 - **FR-008**: System MUST send a custom "replay" event when a user chooses to play again with the same players.
 - **FR-009**: System MUST send a custom "new_session" event when a user chooses to start with new players.
 - **FR-010**: System MUST NOT break or degrade game functionality if Clarity fails to load (ad blocker, network error, offline mode).

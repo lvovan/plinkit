@@ -83,6 +83,8 @@ export interface RenderState {
     settled: boolean;
     /** Rotation angle in radians from physics snapshot. */
     angle: number;
+    /** Auto-shove stall progress (0.0–1.0). When > 0.9, show warning pulse. */
+    autoShoveProgress?: number;
   }>;
   buckets: Array<{ x: number; width: number; score: number }>;
   shoveZoneY: number;
@@ -107,7 +109,7 @@ export interface Renderer {
 
 // ---- Contract 4: AudioManager ----
 
-export type SoundName = 'drop' | 'pinHit' | 'shove' | 'bucketLand' | 'winner' | 'tick' | 'timeout' | 'jackpotBucket';
+export type SoundName = 'drop' | 'pinHit' | 'shove' | 'bucketLand' | 'winner' | 'tick' | 'timeout' | 'jackpotBucket' | 'coinDing' | 'autoShove';
 
 export interface AudioManager {
   unlock(): Promise<void>;

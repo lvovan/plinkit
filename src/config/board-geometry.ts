@@ -9,20 +9,30 @@ import type { BoardLayout, PinPosition, BucketBoundary, Vec2 } from '@/types/ind
  */
 export function computePinPositions(layout: BoardLayout): PinPosition[] {
   const pins: PinPosition[] = [];
-  const { pinRows, bucketCount, pinSpacing, boardHeight } = layout;
+  const { pinRows, boardHeight, boardWidth, pinRadius, puckRadius } = layout;
 
-  // Vertical spacing: pins are distributed in the middle portion of the board
-  // Leave room at top for drop zone and bottom for buckets
-  const topMargin = 2.0;   // world units above first row (drop zone)
-  const bottomMargin = 2.0; // world units below last row (bucket zone)
+  // Use pinsPerRow if available, fallback to bucketCount for backwards compatibility
+  const pinsPerRow = layout.pinsPerRow ?? layout.bucketCount;
+
+  // Dynamic margins: reduce for dense layouts (≥8 rows) to maintain diagonal passability
+  const margin = pinRows >= 8 ? 1.5 : 2.0;
+  const topMargin = margin;
+  const bottomMargin = margin;
   const usableHeight = boardHeight - topMargin - bottomMargin;
   const rowSpacing = usableHeight / (pinRows - 1);
 
+  // Dynamic horizontal spacing: fit pinsPerRow within boardWidth with edge clearance
+  const edgeMargin = pinRadius + puckRadius; // 0.80 each side
+  const usableWidth = boardWidth - 2 * edgeMargin;
+  const pinSpacing = pinsPerRow > 1
+    ? Math.min(2.0, usableWidth / (pinsPerRow - 1))
+    : 0;
+
   for (let row = 0; row < pinRows; row++) {
-    // Number of pins per row: alternate between bucketCount and bucketCount-1
+    // Number of pins per row: alternate between pinsPerRow and pinsPerRow-1
     // Odd rows have one fewer pin; centering them naturally places pins
     // halfway between the even-row pins (staggered / "en quinconce").
-    const pinsInRow = row % 2 === 0 ? bucketCount : bucketCount - 1;
+    const pinsInRow = row % 2 === 0 ? pinsPerRow : pinsPerRow - 1;
     const rowWidth = (pinsInRow - 1) * pinSpacing;
 
     // Y position: top of play area down to bottom
@@ -40,17 +50,45 @@ export function computePinPositions(layout: BoardLayout): PinPosition[] {
 
 /**
  * Compute bucket boundary positions across the bottom of the board.
- * Buckets span the full board width, evenly divided.
+ * Bucket widths are proportional to log₁₀(score) — higher-scoring buckets are wider.
  */
 export function computeBucketBoundaries(layout: BoardLayout): BucketBoundary[] {
   const { bucketCount, bucketScores, boardWidth } = layout;
-  const bucketWidth = boardWidth / bucketCount;
   const halfBoard = boardWidth / 2;
+  const MIN_BUCKET_WIDTH = 1.2; // minimum width for puck to fit
+
+  // Compute log₁₀ weights for proportional widths
+  const weights = bucketScores.map(s => Math.log10(Math.max(1, s)));
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+
+  // Initial proportional widths
+  let widths = weights.map(w => (w / totalWeight) * boardWidth);
+
+  // Clamp to minimum width and redistribute excess
+  let deficit = 0;
+  for (let i = 0; i < widths.length; i++) {
+    if (widths[i] < MIN_BUCKET_WIDTH) {
+      deficit += MIN_BUCKET_WIDTH - widths[i];
+      widths[i] = MIN_BUCKET_WIDTH;
+    }
+  }
+
+  // Redistribute deficit proportionally from buckets above minimum
+  if (deficit > 0) {
+    const aboveMin = widths.filter(w => w > MIN_BUCKET_WIDTH);
+    const aboveTotal = aboveMin.reduce((a, b) => a + b, 0);
+    if (aboveTotal > 0) {
+      widths = widths.map(w =>
+        w > MIN_BUCKET_WIDTH ? w - deficit * (w / aboveTotal) : w,
+      );
+    }
+  }
 
   const buckets: BucketBoundary[] = [];
+  let currentX = -halfBoard;
   for (let i = 0; i < bucketCount; i++) {
-    const leftX = -halfBoard + i * bucketWidth;
-    const rightX = leftX + bucketWidth;
+    const leftX = currentX;
+    const rightX = leftX + widths[i];
     buckets.push({
       index: i,
       leftX,
@@ -58,6 +96,7 @@ export function computeBucketBoundaries(layout: BoardLayout): BucketBoundary[] {
       centerX: (leftX + rightX) / 2,
       score: bucketScores[i],
     });
+    currentX = rightX;
   }
 
   return buckets;
@@ -73,8 +112,9 @@ export function computeShoveZoneY(
   shoveZoneRowLimit: number,
 ): number {
   const { pinRows, boardHeight } = layout;
-  const topMargin = 2.0;
-  const bottomMargin = 2.0;
+  const margin = pinRows >= 8 ? 1.5 : 2.0;
+  const topMargin = margin;
+  const bottomMargin = margin;
   const usableHeight = boardHeight - topMargin - bottomMargin;
   const rowSpacing = usableHeight / (pinRows - 1);
 
@@ -88,8 +128,8 @@ export function computeShoveZoneY(
  * Get the drop zone Y position (above the first pin row).
  */
 export function getDropZoneY(layout: BoardLayout): number {
-  const topMargin = 2.0;
-  return layout.boardHeight / 2 - topMargin / 2;
+  const margin = layout.pinRows >= 8 ? 1.5 : 2.0;
+  return layout.boardHeight / 2 - margin / 2;
 }
 
 /**

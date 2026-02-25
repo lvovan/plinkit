@@ -1,5 +1,5 @@
 import * as planck from 'planck';
-import type { GameConfig, ShoveVector } from '@/types/index';
+import type { GameConfig, ShoveVector, AutoShoveEvent } from '@/types/index';
 import type {
   PhysicsSimulation,
   PhysicsStepResult,
@@ -29,6 +29,8 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
   private bucketDetector: BucketDetector | null = null;
   private pendingCollisions: CollisionEvent[] = [];
   private oobTimers: Map<string, number> = new Map();
+  /** Auto-shove events from the last step() call */
+  private pendingAutoShoves: AutoShoveEvent[] = [];
 
   createWorld(config: GameConfig): void {
     this.config = config;
@@ -38,7 +40,7 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
 
     const builder = new BoardBuilder();
     this.board = builder.build(config);
-    this.bucketDetector = new BucketDetector(config.boardLayout, config.physics);
+    this.bucketDetector = new BucketDetector(config.boardLayout, config.physics, config.autoShove);
 
     // Set up collision listener
     this.board.world.on('begin-contact', (contact: planck.Contact) => {
@@ -145,6 +147,7 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
 
     this.tick++;
     this.pendingCollisions = [];
+    this.pendingAutoShoves = [];
 
     // Step the world
     const { fixedTimestep, velocityIterations, positionIterations, maxAngularVelocity } = this.config.physics;
@@ -198,12 +201,16 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
       );
 
       if (settled !== null) {
-        puck.isSettled = true;
-        puck.settledInBucket = settled;
-        settledPucks.push({
-          puckId: puck.id,
-          bucketIndex: settled,
-        });
+        if (settled.type === 'settled') {
+          puck.isSettled = true;
+          puck.settledInBucket = settled.bucketIndex;
+          settledPucks.push({
+            puckId: puck.id,
+            bucketIndex: settled.bucketIndex,
+          });
+        } else if (settled.type === 'autoShove') {
+          this.pendingAutoShoves.push(settled.event);
+        }
       }
     }
 
@@ -213,6 +220,38 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
       settledPucks,
       outOfBoundsPucks,
     };
+  }
+
+  /** Get auto-shove events from the last step() call */
+  getAutoShoveEvents(): AutoShoveEvent[] {
+    return this.pendingAutoShoves;
+  }
+
+  /** Apply an auto-shove impulse to a stuck puck */
+  applyAutoShove(event: AutoShoveEvent): void {
+    if (!this.board || !this.config) return;
+
+    const puck = this.board.pucks.find(p => p.id === event.puckId);
+    if (!puck || puck.isSettled) return;
+
+    const magnitude = this.config.autoShove.impulseMagnitude;
+    const ix = event.direction.x * magnitude;
+    const iy = event.direction.y * magnitude;
+    const center = puck.body.getWorldCenter();
+
+    puck.body.applyLinearImpulse(
+      planck.Vec2(ix, iy),
+      center,
+    );
+
+    // Wake the body in case it was sleeping
+    puck.body.setAwake(true);
+  }
+
+  /** Get auto-shove stall progress for rendering warning visual */
+  getAutoShoveProgress(puckId: string): number {
+    if (!this.bucketDetector) return 0;
+    return this.bucketDetector.getAutoShoveProgress(puckId, this.tick);
   }
 
   getPuckState(puckId: string): PuckState {

@@ -309,3 +309,60 @@ export function playJackpotBucket(ctx: AudioContext, destination: AudioNode, tim
     osc.stop(t + shimmerDuration);
   }
 }
+
+/**
+ * AutoShove: low "thunk" at ~150 Hz.
+ * ~100ms, distinct from manual shove sound. Indicates auto-nudge of stuck puck.
+ */
+export function playAutoShove(ctx: AudioContext, destination: AudioNode, timeScale?: number): void {
+  const now = ctx.currentTime;
+  const dur = stretchDuration(0.1, timeScale);
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(pitchShift(150, timeScale), now);
+
+  gain.gain.setValueAtTime(0.25, now);
+  gain.gain.exponentialRampToValueAtTime(0.01, now + dur);
+
+  osc.connect(gain);
+  gain.connect(destination);
+  osc.start(now);
+  osc.stop(now + dur);
+}
+
+/**
+ * CoinDing: metallic "ding" with two inharmonic sine tones.
+ * 2400 Hz + 3800 Hz (ratio ~1.583:1), ~150ms.
+ * Plays alongside bucketLand for satisfying score feedback.
+ */
+export function playCoinDing(ctx: AudioContext, destination: AudioNode, timeScale?: number): void {
+  const now = ctx.currentTime;
+  const dur = stretchDuration(0.15, timeScale);
+
+  // Layer 1: fundamental "ding" at 2400 Hz
+  const osc1 = ctx.createOscillator();
+  const gain1 = ctx.createGain();
+  osc1.type = 'sine';
+  osc1.frequency.setValueAtTime(pitchShift(2400, timeScale), now);
+  gain1.gain.setValueAtTime(0.3, now);
+  gain1.gain.exponentialRampToValueAtTime(0.01, now + dur);
+  osc1.connect(gain1);
+  gain1.connect(destination);
+  osc1.start(now);
+  osc1.stop(now + dur);
+
+  // Layer 2: inharmonic overtone at 3800 Hz — faster decay for metallic timbre
+  const osc2 = ctx.createOscillator();
+  const gain2 = ctx.createGain();
+  osc2.type = 'sine';
+  osc2.frequency.setValueAtTime(pitchShift(3800, timeScale), now);
+  gain2.gain.setValueAtTime(0.15, now);
+  gain2.gain.exponentialRampToValueAtTime(0.01, now + stretchDuration(0.1, timeScale));
+  osc2.connect(gain2);
+  gain2.connect(destination);
+  osc2.start(now);
+  osc2.stop(now + dur);
+}

@@ -56,6 +56,8 @@ export interface BoardLayout {
   bucketScores: number[];
   boardWidth: number;
   boardHeight: number;
+  /** Number of pins in even-numbered rows (odd rows get pinsPerRow - 1). Default: 5 */
+  pinsPerRow: number;
 }
 
 export interface PhysicsConfig {
@@ -74,6 +76,8 @@ export interface PhysicsConfig {
   angularDamping: number;
   /** Angular velocity cap in rad/s. 12.57 ≈ 2 rotations/sec (4π). */
   maxAngularVelocity: number;
+  /** Velocity below which a puck is considered stuck for auto-shove (u/s). Default: 0.1 */
+  autoShoveVelocityThreshold: number;
 }
 
 export interface ShoveConfig {
@@ -86,6 +90,30 @@ export interface ShoveConfig {
   shoveOffsetFraction: number;
 }
 
+/** Configuration for the stuck-puck auto-shove system */
+export interface AutoShoveConfig {
+  /** Velocity below which a puck is considered "stuck" (u/s). Default: 0.1 */
+  velocityThreshold: number;
+  /** Number of ticks (at 60fps) a puck must be below threshold before auto-shove. Default: 180 (3s) */
+  stallTicks: number;
+  /** Impulse magnitude applied per auto-shove. Default: 1.5 */
+  impulseMagnitude: number;
+  /** Maximum auto-shove attempts before fallback to nearest-bucket. Default: 3 */
+  maxAttempts: number;
+  /** Duration of visual warning pulse before impulse fires (ms). Default: 300 */
+  warningDurationMs: number;
+}
+
+/** Runtime event emitted when a stuck puck needs an auto-shove */
+export interface AutoShoveEvent {
+  /** The stuck puck's runtime ID */
+  puckId: string;
+  /** Which attempt this is (0-indexed) */
+  attemptIndex: number;
+  /** Direction unit vector for the impulse */
+  direction: { x: number; y: number };
+}
+
 export interface GameConfig {
   totalRounds: number;
   boardLayout: BoardLayout;
@@ -95,6 +123,7 @@ export interface GameConfig {
   maxTieBreakers: number;
   scoring: ScoringConfig;
   slowMotion: SlowMotionConfig;
+  autoShove: AutoShoveConfig;
 }
 
 // ---- Turn Records ----

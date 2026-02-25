@@ -13,6 +13,7 @@ import { VisibilityHandler } from '@/core/visibility';
 import { TutorialIndicator } from '@/ui/tutorial-indicator';
 import { createSlowMotionState, triggerSlowMotion, updateSlowMotion, resetSlowMotion } from '@/core/slow-motion';
 import { initTelemetry, trackEvent, setTag } from '@/telemetry/clarity';
+import { showShoveGuidance, wasGuidanceShown } from '@/ui/shove-guidance';
 import { DEFAULT_GAME_CONFIG } from '@/config/game-config';
 import { computePinPositions, computeBucketBoundaries } from '@/config/board-geometry';
 import type { RenderState, TurnResult, PlayerRegistration } from '@/types/contracts';
@@ -89,15 +90,36 @@ const visibility = new VisibilityHandler({
 });
 visibility.attach();
 
-// ---- Pre-compute static render data ----
-const pinPositions = computePinPositions(layout);
-const pinRenderData = pinPositions.map(p => ({ x: p.x, y: p.y, radius: layout.pinRadius }));
-const bucketBoundaries = computeBucketBoundaries(layout);
-const bucketRenderData = bucketBoundaries.map(b => ({
-  x: b.leftX,
-  width: b.rightX - b.leftX,
-  score: b.score,
-}));
+// ---- Pre-compute render data (rebuilt on layout changes) ----
+let pinRenderData: Array<{ x: number; y: number; radius: number }> = [];
+let bucketRenderData: Array<{ x: number; width: number; score: number }> = [];
+
+/** Rebuild pin and bucket render data from current layout. Called at game start and each round transition. */
+function rebuildRenderData(): void {
+  const pinPositions = computePinPositions(layout);
+  pinRenderData = pinPositions.map(p => ({ x: p.x, y: p.y, radius: layout.pinRadius }));
+  const bucketBoundaries = computeBucketBoundaries(layout);
+  bucketRenderData = bucketBoundaries.map(b => ({
+    x: b.leftX,
+    width: b.rightX - b.leftX,
+    score: b.score,
+  }));
+}
+
+/** Randomize the board layout for a new round */
+function randomizeLayout(): void {
+  layout.pinRows = 5 + Math.floor(Math.random() * 5);   // 5–9
+  layout.pinsPerRow = 4 + Math.floor(Math.random() * 3); // 4–6
+  // Compute dynamic pin spacing
+  const edgeMargin = layout.pinRadius + layout.puckRadius;
+  const usableWidth = layout.boardWidth - 2 * edgeMargin;
+  layout.pinSpacing = layout.pinsPerRow > 1
+    ? Math.min(2.0, usableWidth / (layout.pinsPerRow - 1))
+    : 0;
+}
+
+// Initialize render data
+rebuildRenderData();
 
 // ---- Game state ----
 let dropX = 0;
@@ -111,6 +133,8 @@ let bounceCount = 0;
 const puckStyleMap = new Map<string, PuckStyle>();
 let slowMotionState: SlowMotionState = createSlowMotionState();
 let isFirstGame = true;
+let shoveOccurredInRound1 = false;
+let totalShoveCount = 0;
 
 // ---- Audio rate limiter ----
 const recentSoundTimestamps: number[] = [];
@@ -189,6 +213,13 @@ input.onFlick((vector) => {
     });
     if (applied) {
       audioManager.play('shove');
+      totalShoveCount++;
+
+      // Track shove for round 1 guidance popup
+      const gameState = stateMachine.getState();
+      if (gameState.currentRound === 1) {
+        shoveOccurredInRound1 = true;
+      }
 
       // Proportional shake: 5 × (forceMagnitude / maxForceMagnitude)
       const forceMag = Math.sqrt(vector.dx * vector.dx + vector.dy * vector.dy);
@@ -208,8 +239,7 @@ input.onFlick((vector) => {
 });
 
 // ---- Game loop ----
-const board = sim.getBoard();
-const shoveZoneY = board?.shoveZoneY ?? 0;
+let shoveZoneY = sim.getBoard()?.shoveZoneY ?? 0;
 
 const loop = new GameLoop({
   onStep() {
@@ -224,6 +254,12 @@ const loop = new GameLoop({
     musicManager.setTimeScale(timeScale);
 
     const result = sim.step(timeScale);
+
+    // Process auto-shove events — apply impulse to stuck pucks
+    for (const autoShoveEvent of sim.getAutoShoveEvents()) {
+      sim.applyAutoShove(autoShoveEvent);
+      audioManager.play('autoShove', { timeScale });
+    }
 
     // Check if active puck crossed below shove zone — trigger slow-motion
     if (activePuckId && slowMotionState.phase === 'normal' && !slowMotionState.triggeredThisTurn) {
@@ -280,7 +316,7 @@ const loop = new GameLoop({
       input.setFlickEnabled(false);
 
       if (roundAction.type === 'nextRound') {
-        startNextTurn();
+        transitionToNextRound();
       } else if (roundAction.type === 'winner') {
         gameRunning = false;
         turnTimer.stop();
@@ -307,6 +343,7 @@ const loop = new GameLoop({
 
       // Audio and visual feedback for bucket landing
       audioManager.play('bucketLand');
+      audioManager.play('coinDing', { timeScale });
 
       // Play jackpot sound for center (highest-scoring) bucket
       const middleBucketIndex = Math.floor(layout.bucketScores.length / 2);
@@ -347,8 +384,7 @@ const loop = new GameLoop({
       input.setFlickEnabled(false);
 
       if (roundAction.type === 'nextRound') {
-        // Start next turn
-        startNextTurn();
+        transitionToNextRound();
       } else if (roundAction.type === 'winner') {
         gameRunning = false;
         turnTimer.stop();
@@ -381,6 +417,7 @@ const loop = new GameLoop({
         style: puckStyleMap.get(p.id) ?? currentPuckStyle,
         settled: p.settled,
         angle: p.angle,
+        autoShoveProgress: sim.getAutoShoveProgress(p.id),
       })),
       buckets: bucketRenderData,
       shoveZoneY,
@@ -400,6 +437,27 @@ const loop = new GameLoop({
 });
 
 // ---- Game flow ----
+
+/** Handle round transition with optional shove guidance popup */
+async function transitionToNextRound(): Promise<void> {
+  const gameState = stateMachine.getState();
+
+  // Show shove guidance at end of Round 1 if no shoves occurred
+  if (gameState.currentRound === 1 && !shoveOccurredInRound1 && !wasGuidanceShown() && gameState.phase !== 'tieBreaker') {
+    gameRunning = false;
+    await showShoveGuidance(overlayContainer);
+    gameRunning = true;
+  }
+
+  // Rebuild board with new random layout
+  randomizeLayout();
+  sim.clearPucks();
+  puckStyleMap.clear();
+  sim.createWorld(config);
+  shoveZoneY = sim.getBoard()?.shoveZoneY ?? 0;
+  rebuildRenderData();
+  startNextTurn();
+}
 
 function startNextTurn(): void {
   const ctx = stateMachine.startTurn();
@@ -421,8 +479,11 @@ async function handleGameEnd(players: Player[], winner: Player | Player[], isTie
   // Telemetry: tag game end with results
   trackEvent('game_end');
   const winnerArr = Array.isArray(winner) ? winner : [winner];
+  const totalRounds = stateMachine.getState().currentRound;
   setTag('winningScore', String(Math.max(...winnerArr.map(w => w.score))));
-  setTag('totalRounds', String(stateMachine.getState().currentRound));
+  setTag('totalRounds', String(totalRounds));
+  setTag('totalShoves', String(totalShoveCount));
+  setTag('avgShovesPerRound', totalRounds > 0 ? (totalShoveCount / totalRounds).toFixed(1) : '0');
 
   // Crossfade back to lobby music when showing results
   musicManager.crossfadeTo('lobby');
@@ -431,21 +492,31 @@ async function handleGameEnd(players: Player[], winner: Player | Player[], isTie
   if (action === 'playAgain') {
     trackEvent('replay');
     isFirstGame = false;
+    shoveOccurredInRound1 = false;
+    totalShoveCount = 0;
     stateMachine.resetForReplay();
     sim.clearPucks();
     puckStyleMap.clear();
+    randomizeLayout();
     sim.createWorld(config);
+    shoveZoneY = sim.getBoard()?.shoveZoneY ?? 0;
+    rebuildRenderData();
     gameRunning = true;
     startNextTurn();
     overlays.updateScoreboard(stateMachine.getState().players);
   } else if (action === 'newPlayers') {
     trackEvent('new_session');
     isFirstGame = true;
+    shoveOccurredInRound1 = false;
+    totalShoveCount = 0;
     tutorial.reset();
     stateMachine.resetFull();
     sim.clearPucks();
     puckStyleMap.clear();
+    randomizeLayout();
     sim.createWorld(config);
+    shoveZoneY = sim.getBoard()?.shoveZoneY ?? 0;
+    rebuildRenderData();
     startGame();
   } else {
     overlays.showFarewell();
@@ -492,6 +563,8 @@ async function startGame(): Promise<void> {
   });
 
   stateMachine.startSession(registrations, config);
+  shoveOccurredInRound1 = false;
+  totalShoveCount = 0;
 
   // Telemetry: tag game start with player count
   trackEvent('game_start');
@@ -504,7 +577,10 @@ async function startGame(): Promise<void> {
 
   sim.clearPucks();
   puckStyleMap.clear();
+  randomizeLayout();
   sim.createWorld(config);
+  shoveZoneY = sim.getBoard()?.shoveZoneY ?? 0;
+  rebuildRenderData();
   startNextTurn();
 }
 
