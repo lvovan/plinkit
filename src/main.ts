@@ -159,7 +159,7 @@ const turnTimer = new TurnTimer(
   },
   () => {
     // Timer expired — auto-drop puck from last position with no shoves
-    if (!puckDropped && currentPlayer) {
+    if (!puckDropped && gameRunning && currentPlayer) {
       activePuckId = sim.dropPuck(dropX, currentPlayer.id);
       puckStyleMap.set(activePuckId, currentPuckStyle);
       puckDropped = true;
@@ -178,7 +178,7 @@ input.onDropPositionChange((x: number) => {
 });
 
 input.onRelease(() => {
-  if (!puckDropped && currentPlayer) {
+  if (!puckDropped && gameRunning && currentPlayer) {
     // Dismiss tutorial on puck drop
     if (tutorial.isVisible()) tutorial.dismiss();
     turnTimer.stop();
@@ -276,8 +276,8 @@ const loop = new GameLoop({
 
       // Collision flash with current multiplier text
       effects.addCollisionFlash(
-        collision.x,
-        collision.y,
+        collision.contactX,
+        collision.contactY,
         formatMultiplier(bounceCount, config.scoring),
       );
     }
@@ -339,7 +339,7 @@ const loop = new GameLoop({
 
       const roundAction = stateMachine.evaluateRoundEnd();
 
-      puckDropped = false;
+      // puckDropped stays true until startNextTurn() — blocks new drops during async transitions
       activePuckId = null;
       input.setFlickEnabled(false);
 
@@ -418,7 +418,7 @@ const loop = new GameLoop({
       // Check if round is complete
       const roundAction = stateMachine.evaluateRoundEnd();
 
-      puckDropped = false;
+      // puckDropped stays true until startNextTurn() — blocks new drops during async transitions
       activePuckId = null;
       input.setFlickEnabled(false);
 
@@ -587,6 +587,11 @@ function waitForSettling(): Promise<void> {
 }
 
 function startNextTurn(): void {
+  // Reset drop state — must happen here (not in settle handlers) to block
+  // drops during async transitions such as board-rebuild settling.
+  puckDropped = false;
+  activePuckId = null;
+
   const ctx = stateMachine.startTurn();
   currentPlayer = ctx.player;
   currentPuckStyle = ctx.player.puckStyle;
@@ -594,6 +599,7 @@ function startNextTurn(): void {
   slowMotionState = resetSlowMotion();
   musicManager.setTimeScale(1.0);
   overlays.showTurnIndicator(ctx.player, ctx.timerSeconds);
+  overlays.showRoundIndicator(ctx.roundNumber, ctx.totalRounds);
   overlays.updateTimer(ctx.timerSeconds);
   // Show tutorial on first turn of first round of first game
   tutorial.show(ctx.roundNumber, ctx.turnNumber, isFirstGame);

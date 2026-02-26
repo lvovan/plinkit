@@ -59,6 +59,7 @@ export class GameStateMachine implements GameStateMachineContract {
       player,
       turnNumber: this.turnManager.getTurnNumber(),
       roundNumber: this.turnManager.getCurrentRound(),
+      totalRounds: this.config.totalRounds,
       timerSeconds: this.config.turnTimerSeconds,
     };
   }

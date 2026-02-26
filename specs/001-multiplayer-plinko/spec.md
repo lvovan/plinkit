@@ -74,7 +74,12 @@ winner is declared.
 1. **Given** the game is on the registration screen, **When** 2 to 4
    players each enter a name, **Then** each player is assigned a visually
    distinct puck (unique color and pattern) and the game is ready to start.
-2. **Given** registration is complete, **When** the game starts, **Then**
+2. **Given** a player has been added to the registration list, **When** the
+   player (or another player) taps the remove button next to that player's
+   entry, **Then** the player is removed from the list, their puck
+   assignment is released, and remaining players' puck assignments are
+   recalculated.
+3. **Given** registration is complete, **When** the game starts, **Then**
    no additional players can join the session.
 3. **Given** it is a player's turn, **When** the active player is shown,
    **Then** the UI clearly highlights whose turn it is by name, puck color,
@@ -287,6 +292,8 @@ are fully visible and usable on both without scrolling.
   The game MUST require at least one non-whitespace character per name.
 - What happens when only one player registers?
   The game MUST allow a single player to start a solo session (no opponent needed). In solo mode, the player plays all rounds and sees their final score at the end.
+- What happens when a player removes the last remaining player from the registration list?
+  The remove control MUST be hidden or disabled when only 1 player remains, preventing the list from becoming empty.
 - What happens if a puck gets stuck between pins (or between pins and
   a previously dropped puck) and does not reach a bucket within a
   reasonable time? The game MUST detect a stalled puck (e.g., near-zero
@@ -326,8 +333,16 @@ are fully visible and usable on both without scrolling.
 - **FR-001**: The game MUST support 1 to 4 players per session.
 - **FR-002**: Each player MUST enter a display name during registration
   (minimum 1 non-whitespace character, maximum 16 characters).
+- **FR-002a**: The registration screen MUST provide a remove/delete
+  control for each player entry, allowing any added player to be removed
+  before the game starts. At least 1 player must remain (the remove
+  control MUST be hidden or disabled when only 1 player is listed).
 - **FR-003**: Each player MUST be automatically assigned a visually
   distinct puck with a unique color and pattern from a preset palette.
+- **FR-003a**: When a player is removed from the registration list,
+  puck color and pattern assignments MUST be recalculated for the
+  remaining players so that assignments remain sequential and
+  conflict-free.
 - **FR-004**: Once the game starts, no additional players may join the
   active session.
 - **FR-005**: The number of rounds per game MUST be configurable before
@@ -368,6 +383,10 @@ are fully visible and usable on both without scrolling.
   position along the top of the board before releasing the puck.
 - **FR-013**: A visible 15-second countdown timer MUST begin when a
   player's turn starts.
+- **FR-013a**: The system MUST NOT allow a new puck to be dropped until
+  the previously played puck has fully settled in a bucket (or been
+  declared out-of-bounds). During turn transitions, board rebuilds,
+  and settling phases, puck drop input MUST be ignored.
 - **FR-014**: If the timer expires, the puck MUST be auto-released from
   its last horizontal position.
 - **FR-015**: After a timeout-triggered release, shove inputs MUST be
@@ -410,6 +429,9 @@ are fully visible and usable on both without scrolling.
   same bucket across multiple rounds.
 - **FR-023**: Running scores for all players MUST be visible at all times
   during gameplay.
+- **FR-023a**: The HUD MUST display a "Round X / Y" indicator showing the
+  current round number and total rounds, so players always know how many
+  balls remain before the game ends.
 
 **Tie-Breakers**
 

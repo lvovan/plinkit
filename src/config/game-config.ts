@@ -6,13 +6,13 @@ export const DEFAULT_BOARD_LAYOUT: BoardLayout = {
   pinRows: 5,
   bucketCount: 5,
   pinSpacing: 2.0,        // 2 world units between pin centers
-  pinRadius: 0.30,       // pin visual/collision radius (scaled with spacing)
+  pinRadius: 0.12,       // pin visual/collision radius (reduced 60% for open board)
   puckRadius: 0.5,       // puck visual/collision radius
   bucketScores: [100, 1000, 10000, 1000, 100],
   boardWidth: 10.0,      // total board width in world units
   boardHeight: 14.0,     // total board height in world units
-  pinsPerRow: 5,         // pins in even rows (odd rows get pinsPerRow - 1)
-  bucketWidths: [0.25, 0.20, 0.10, 0.20, 0.25], // explicit bucket width fractions
+  pinsPerRow: 6,         // pins in even rows (odd rows get pinsPerRow - 1)
+  bucketWidths: [0.20, 0.20, 0.20, 0.20, 0.20], // equal bucket width fractions
 };
 
 // ---- Physics Config ----

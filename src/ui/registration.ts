@@ -65,7 +65,28 @@ export class RegistrationOverlay {
 
       // Start with 2 player inputs
       let playerCount = 0;
-      const addInput = () => {
+
+      const rebuildPuckPreviews = (): void => {
+        const rows = inputsDiv.querySelectorAll('.player-row');
+        rows.forEach((row, i) => {
+          const preview = row.querySelector('.puck-preview') as HTMLElement;
+          if (preview) preview.style.background = PUCK_PALETTE[i].color;
+          const input = row.querySelector('.player-name') as HTMLInputElement;
+          if (input) {
+            input.dataset.index = String(i);
+            input.placeholder = `Player ${i + 1}`;
+          }
+        });
+      };
+
+      const updateRemoveButtons = (): void => {
+        const removeBtns = inputsDiv.querySelectorAll('.remove-player-btn') as NodeListOf<HTMLButtonElement>;
+        removeBtns.forEach(btn => {
+          btn.style.display = playerCount <= 1 ? 'none' : '';
+        });
+      };
+
+      const addInput = (): void => {
         if (playerCount >= maxPlayers) return;
         playerCount++;
         const idx = playerCount - 1;
@@ -74,12 +95,25 @@ export class RegistrationOverlay {
         row.innerHTML = `
           <span class="puck-preview" style="background:${PUCK_PALETTE[idx].color}"></span>
           <input type="text" class="player-name" placeholder="Player ${playerCount}" maxlength="16" data-index="${idx}" />
+          <button type="button" class="btn remove-player-btn" aria-label="Remove player" title="Remove player">✕</button>
         `;
+
+        const removeBtn = row.querySelector('.remove-player-btn') as HTMLButtonElement;
+        removeBtn.addEventListener('click', () => {
+          row.remove();
+          playerCount--;
+          rebuildPuckPreviews();
+          updateRemoveButtons();
+          addBtn.style.display = playerCount < maxPlayers ? '' : 'none';
+          updateStartBtn();
+        });
+
         inputsDiv.appendChild(row);
 
         if (playerCount >= maxPlayers) {
           addBtn.style.display = 'none';
         }
+        updateRemoveButtons();
         updateStartBtn();
       };
 
@@ -169,6 +203,10 @@ export class RegistrationOverlay {
       .btn { padding: 0.6rem 1.2rem; border: none; border-radius: 6px;
         font-size: 1rem; cursor: pointer; min-height: 44px; min-width: 44px; }
       .add-player-btn { background: #333; color: #ccc; }
+      .remove-player-btn { background: transparent; color: #888; font-size: 1.1rem;
+        padding: 0.3rem 0.5rem; min-width: 36px; min-height: 36px; flex-shrink: 0;
+        border: 1px solid #333; }
+      .remove-player-btn:hover { color: #e63946; border-color: #e63946; }
       .start-btn { background: #e63946; color: #fff; font-weight: bold; }
       .start-btn:disabled { opacity: 0.4; cursor: default; }
       .reg-attribution { margin-top: 1.5rem; font-size: 0.75rem; color: #888;

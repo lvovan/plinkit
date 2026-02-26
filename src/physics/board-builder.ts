@@ -6,6 +6,7 @@ import {
   computeShoveZoneY,
   getBoardWalls,
   BUCKET_DIVIDER_HEIGHT,
+  BUCKET_DIVIDER_WIDTH,
 } from '@/config/board-geometry';
 
 /** Runtime board object holding all Planck.js bodies */
@@ -118,17 +119,17 @@ export class BoardBuilder {
     const halfH = boardLayout.boardHeight / 2;
     const bucketHeight = BUCKET_DIVIDER_HEIGHT;
     const bucketBottom = -halfH;
-    const bucketTop = bucketBottom + bucketHeight;
 
-    // Create inner dividers (between buckets)
+    // Create inner dividers (between buckets) — Box shapes for visible thickness
     for (let i = 1; i < buckets.length; i++) {
       const x = buckets[i].leftX;
-      const divider = world.createBody({ type: 'static' });
+      const centerY = bucketBottom + bucketHeight / 2;
+      const divider = world.createBody({
+        type: 'static',
+        position: planck.Vec2(x, centerY),
+      });
       divider.createFixture({
-        shape: new planck.Edge(
-          planck.Vec2(x, bucketBottom),
-          planck.Vec2(x, bucketTop),
-        ),
+        shape: planck.Box(BUCKET_DIVIDER_WIDTH / 2, bucketHeight / 2),
         restitution: 0.2,
         friction: 0.3,
       });

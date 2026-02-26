@@ -16,7 +16,7 @@ describe('Fixed Board Layout (5-Row)', () => {
 
   it('should have correct pin counts per row (staggered layout)', () => {
     const pins = computePinPositions(DEFAULT_BOARD_LAYOUT);
-    const pinsPerRow = DEFAULT_BOARD_LAYOUT.pinsPerRow; // 5
+    const pinsPerRow = DEFAULT_BOARD_LAYOUT.pinsPerRow; // 6
     // Even rows: pinsPerRow pins, odd rows: pinsPerRow - 1 pins
     for (let row = 0; row < 5; row++) {
       const rowPins = pins.filter(p => p.row === row);
@@ -25,9 +25,9 @@ describe('Fixed Board Layout (5-Row)', () => {
     }
   });
 
-  it('should produce 23 total pins (3×5 + 2×4)', () => {
+  it('should produce 28 total pins (3×6 + 2×5)', () => {
     const pins = computePinPositions(DEFAULT_BOARD_LAYOUT);
-    expect(pins.length).toBe(23);
+    expect(pins.length).toBe(28);
   });
 
   // T009: No randomizeLayout function exported from main.ts

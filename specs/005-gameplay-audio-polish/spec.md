@@ -52,16 +52,16 @@ When a player drops a puck, it displays a visible pattern (stripes, dots, or rin
 
 ### User Story 3 — Sound Effects (Priority: P2)
 
-As a player interacts with the game, audible feedback accompanies key moments: a satisfying "clunk" when the puck drops, a light percussive tap on each pin bounce, and a celebratory sound when the puck lands in a scoring bucket. Each sound effect enhances the tactile feel of gameplay. Sounds are short, distinct, and do not overlap in an unpleasant way when many pin bounces occur in quick succession.
+As a player interacts with the game, audible feedback accompanies key moments: a satisfying low-pitched wooden "thock" when the puck drops, a warm, resonant wooden tap on each pin bounce (evoking a ball striking a wooden peg on a real wooden board), and a celebratory sound when the puck lands in a scoring bucket. The collision sounds are designed to match the wood-themed board aesthetic — lower in pitch, with a short woody decay rather than a metallic or synthetic tone. Sounds are short, distinct, and do not overlap in an unpleasant way when many pin bounces occur in quick succession.
 
 **Why this priority**: Sound effects are equally important as visual patterns — they complete the sensory feedback loop and make the game feel polished and responsive.
 
-**Independent Test**: Can be tested by dropping a puck with the sound on, verifying that a drop sound plays on release, pin-hit taps play on bounces (rate-limited to avoid cacophony), and a scoring sound plays on bucket landing.
+**Independent Test**: Can be tested by dropping a puck with the sound on, verifying that a drop sound plays on release, pin-hit taps play on bounces (with a warm wooden tone, rate-limited to avoid cacophony), and a scoring sound plays on bucket landing.
 
 **Acceptance Scenarios**:
 
-1. **Given** the player releases a puck from the drop zone, **When** the puck begins falling, **Then** a "drop" sound plays once.
-2. **Given** a puck is falling through the pin field, **When** the puck collides with a pin, **Then** a short pin-hit sound plays, with rate-limiting so rapid bounces do not create an unpleasant audio blast.
+1. **Given** the player releases a puck from the drop zone, **When** the puck begins falling, **Then** a low-pitched wooden "thock" drop sound plays once.
+2. **Given** a puck is falling through the pin field, **When** the puck collides with a pin, **Then** a short, low-pitched wooden tap sound plays (evoking wood-on-wood contact), with rate-limiting so rapid bounces do not create an unpleasant audio blast.
 3. **Given** the player shoves a puck, **When** the shove force is applied, **Then** a "shove" whoosh sound plays.
 4. **Given** a puck lands in a scoring bucket, **When** the bucket landing is detected, **Then** a celebratory scoring sound plays.
 5. **Given** the player has muted sound effects via the SFX toggle, **When** any game event occurs, **Then** no sound effects play (background music is unaffected).
@@ -118,11 +118,12 @@ The game features two distinct music tracks. A calm, ambient lobby track plays d
 **Sound Effects**
 
 - **FR-009**: A "drop" sound effect MUST play when a puck is released into the board.
-- **FR-010**: A "pin hit" sound effect MUST play when a puck collides with a pin, subject to rate-limiting to prevent audio overload.
+- **FR-010**: A "pin hit" sound effect MUST play when a puck collides with a pin, subject to rate-limiting to prevent audio overload. The pin-hit sound MUST be low-pitched and wooden in character (targeting ~200–400 Hz base frequency with a short noise-burst decay), matching the wood-themed board aesthetic.
 - **FR-011**: A "shove" sound effect MUST play when a shove force is applied to a puck.
 - **FR-012**: A "bucket land" / scoring sound effect MUST play when a puck lands in a scoring bucket.
 - **FR-013**: All sound effects MUST be silenced when the player has muted SFX via the dedicated SFX toggle.
 - **FR-014**: All sound effects MUST be programmatically synthesized at runtime using the native Web Audio API — no pre-recorded audio files or external audio libraries are required.
+- **FR-014a**: Collision sound effects (pin hit, drop) MUST use a low-pitched, wooden timbre — synthesized with a low base frequency (~200–400 Hz), a bandpass-filtered noise burst for woody character, and a fast exponential decay (~80–120 ms) to evoke the feel of a ball striking a wooden peg.
 
 **Background Music**
 
@@ -146,7 +147,8 @@ The game features two distinct music tracks. A calm, ambient lobby track plays d
 - The existing rate-limiting mechanism (max 4 sounds per 50ms window) is adequate for preventing audio overload with unlimited shoves and frequent pin collisions.
 - All audio (sound effects and background music) will be programmatically synthesized at runtime using the native Web Audio API with a thin custom wrapper — no pre-recorded audio files or external libraries are needed. The current audio directory remains empty by design.
 - The three non-solid patterns (stripes, dots, rings) are sufficient to differentiate players when combined with player colors, for up to at least 6 distinct player identities (3 patterns × multiple colors).
-- Background music volume will be set at a lower level relative to sound effects so it does not mask gameplay audio feedback.
+- Background music volume will be set at a lower level relative to sound effects so it does not mask gameplay audio feedback. Specifically, music volume MUST be exactly 30% of the SFX volume level (see spec 009-round-persistence-audio FR-009).
+- Collision sound effects (pin hit, drop) are designed with a low-pitched wooden timbre to match the wood-themed board aesthetic introduced in spec 011-graphics-overhaul.
 
 ## Success Criteria *(mandatory)*
 
