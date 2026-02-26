@@ -34,6 +34,10 @@ export class OverlayManager implements UIOverlayManager {
     this.hud.showTurnIndicator(player, timerSeconds);
   }
 
+  showRoundIndicator(currentRound: number, totalRounds: number): void {
+    this.hud.showRoundIndicator(currentRound, totalRounds);
+  }
+
   updateTimer(secondsRemaining: number): void {
     this.hud.updateTimer(secondsRemaining);
   }

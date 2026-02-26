@@ -16,6 +16,8 @@ import {
   computePinPositions,
   computeBucketBoundaries,
   computeShoveZoneY,
+  BUCKET_DIVIDER_HEIGHT,
+  BUCKET_DIVIDER_WIDTH,
 } from '@/config/board-geometry';
 
 let nextPuckId = 0;
@@ -53,6 +55,21 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
     // Set up collision listener
     this.board.world.on('begin-contact', (contact: planck.Contact) => {
       this.handleCollision(contact);
+    });
+
+    // Boost puck-puck restitution by 50% compared to pin-puck
+    this.board.world.on('pre-solve', (contact: planck.Contact) => {
+      const dataA = contact.getFixtureA().getBody().getUserData() as { type: string } | null;
+      const dataB = contact.getFixtureB().getBody().getUserData() as { type: string } | null;
+      if (dataA?.type === 'puck' && dataB?.type === 'puck') {
+        // Effective pin-puck restitution = max(puckRestitution, pinRestitution) = 0.5
+        // Puck-puck = 0.5 * 1.5 = 0.75
+        const pinPuckRestitution = Math.max(
+          config.physics.puckRestitution,
+          config.physics.pinRestitution,
+        );
+        contact.setRestitution(pinPuckRestitution * 1.5);
+      }
     });
   }
 
@@ -365,21 +382,21 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
       this.board.pins.push(pin);
     }
 
-    // Create new bucket dividers
+    // Create new bucket dividers (Box shapes for visible thickness)
     const buckets = computeBucketBoundaries(boardLayout);
     const halfH = boardLayout.boardHeight / 2;
-    const bucketHeight = 1.5;
+    const bucketHeight = BUCKET_DIVIDER_HEIGHT;
     const bucketBottom = -halfH;
-    const bucketTop = bucketBottom + bucketHeight;
 
     for (let i = 1; i < buckets.length; i++) {
       const x = buckets[i].leftX;
-      const divider = this.board.world.createBody({ type: 'static' });
+      const centerY = bucketBottom + bucketHeight / 2;
+      const divider = this.board.world.createBody({
+        type: 'static',
+        position: planck.Vec2(x, centerY),
+      });
       divider.createFixture({
-        shape: new planck.Edge(
-          planck.Vec2(x, bucketBottom),
-          planck.Vec2(x, bucketTop),
-        ),
+        shape: planck.Box(BUCKET_DIVIDER_WIDTH / 2, bucketHeight / 2),
         restitution: 0.2,
         friction: 0.3,
       });
@@ -452,11 +469,22 @@ export class PhysicsSimulationImpl implements PhysicsSimulation {
     if (otherData?.type === 'pin') collisionType = 'pinHit';
     else if (otherData?.type === 'puck') collisionType = 'puckHit';
 
+    // Extract contact point from Planck.js WorldManifold
+    let contactX = pos.x;
+    let contactY = pos.y;
+    const wm = contact.getWorldManifold(null);
+    if (wm && wm.points && wm.points.length > 0) {
+      contactX = wm.points[0].x;
+      contactY = wm.points[0].y;
+    }
+
     this.pendingCollisions.push({
       type: collisionType,
       puckId: puckData.id,
       x: pos.x,
       y: pos.y,
+      contactX,
+      contactY,
     });
 
     // T034: Detect same-player puck-puck contacts for growth

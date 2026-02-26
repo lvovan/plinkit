@@ -20,7 +20,7 @@ describe('Persistent Pucks Integration', () => {
 
     expect(pins1).toEqual(pins2);
     expect(pins2).toEqual(pins3);
-    expect(pins1.length).toBe(23); // 5 rows: 3×5 + 2×4
+    expect(pins1.length).toBe(28); // 5 rows: 3×6 + 2×5
   });
 
   // T016: Drop puck, "advance round" (no clearPucks), assert puck body still exists

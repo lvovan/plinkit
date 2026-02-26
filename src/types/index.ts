@@ -56,7 +56,7 @@ export interface BoardLayout {
   bucketScores: number[];
   boardWidth: number;
   boardHeight: number;
-  /** Number of pins in even-numbered rows (odd rows get pinsPerRow - 1). Default: 5 */
+  /** Number of pins in even-numbered rows (odd rows get pinsPerRow - 1). Default: 6 */
   pinsPerRow: number;
   /** Explicit bucket width fractions (must sum to 1.0). If omitted, widths are computed via log₁₀ weighting. */
   bucketWidths?: number[];

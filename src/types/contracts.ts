@@ -21,6 +21,10 @@ export interface CollisionEvent {
   puckId: string;
   x: number;
   y: number;
+  /** X coordinate of the physics contact point (from WorldManifold). */
+  contactX: number;
+  /** Y coordinate of the physics contact point (from WorldManifold). */
+  contactY: number;
 }
 
 export interface SettledPuckEvent {
@@ -164,6 +168,7 @@ export interface TurnContext {
   player: Player;
   turnNumber: number;
   roundNumber: number;
+  totalRounds: number;
   timerSeconds: number;
 }
 

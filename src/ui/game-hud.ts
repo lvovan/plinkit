@@ -26,6 +26,9 @@ export class GameHUD {
   // -- Turn indicator section --
   private turnSection: HTMLElement | null = null;
 
+  // -- Round indicator section --
+  private roundSection: HTMLElement | null = null;
+
   // -- Scoreboard section --
   private scoreSection: HTMLElement | null = null;
   private rowMap = new Map<string, HTMLElement>();
@@ -133,8 +136,10 @@ export class GameHUD {
       <div class="timer-display" style="font-size:1.3rem; font-weight:bold; margin-top:2px;"></div>
     `;
 
-    // Insert after toggle row (before scoreboard if present)
-    if (this.scoreSection) {
+    // Insert after toggle row (before round indicator or scoreboard)
+    if (this.roundSection) {
+      root.insertBefore(this.turnSection, this.roundSection);
+    } else if (this.scoreSection) {
       root.insertBefore(this.turnSection, this.scoreSection);
     } else {
       root.appendChild(this.turnSection);
@@ -154,6 +159,42 @@ export class GameHUD {
     if (this.turnSection) {
       this.turnSection.remove();
       this.turnSection = null;
+    }
+  }
+
+  // ================================================================
+  //  2b. Round Indicator (balls remaining)
+  // ================================================================
+
+  showRoundIndicator(currentRound: number, totalRounds: number): void {
+    this.hideRoundIndicator();
+    const root = this.ensureRoot();
+
+    const ballsLeft = totalRounds - currentRound;
+
+    this.roundSection = document.createElement('div');
+    this.roundSection.className = 'hud-round-section';
+    this.roundSection.style.cssText = `
+      background: rgba(22, 33, 62, 0.9); padding: 4px 12px; border-radius: 8px;
+      pointer-events: none; font-size: 0.8rem; color: #b0b0b0;
+      text-align: center;
+    `;
+    this.roundSection.innerHTML =
+      `<span style="color:#ffd700; font-weight:bold;">Round ${currentRound} / ${totalRounds}</span>` +
+      `<span style="margin-left:8px;">${ballsLeft === 0 ? 'Final ball!' : `${ballsLeft} ball${ballsLeft === 1 ? '' : 's'} left`}</span>`;
+
+    // Insert before scoreboard if present
+    if (this.scoreSection) {
+      root.insertBefore(this.roundSection, this.scoreSection);
+    } else {
+      root.appendChild(this.roundSection);
+    }
+  }
+
+  hideRoundIndicator(): void {
+    if (this.roundSection) {
+      this.roundSection.remove();
+      this.roundSection = null;
     }
   }
 
@@ -267,6 +308,7 @@ export class GameHUD {
 
   hideGameplay(): void {
     this.hideTurnIndicator();
+    this.hideRoundIndicator();
     this.hideScoreboard();
   }
 

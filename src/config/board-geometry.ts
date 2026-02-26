@@ -3,6 +3,9 @@ import type { BoardLayout, PinPosition, BucketBoundary, Vec2 } from '@/types/ind
 /** Height of bucket divider walls in world units (shared with board-builder). */
 export const BUCKET_DIVIDER_HEIGHT = 1.5;
 
+/** Half-width of bucket divider posts in world units (Box shape half-extent). */
+export const BUCKET_DIVIDER_WIDTH = 0.3;
+
 /** Minimum clearance between the bottom pin row and the top of bucket dividers,
  *  expressed as a multiple of puckRadius. */
 const BUCKET_CLEARANCE_FACTOR = 1.25;

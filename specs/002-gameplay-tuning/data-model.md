@@ -16,7 +16,7 @@ BoardLayout
 ├── pinRows: number          # 12 → 6
 ├── bucketCount: number      # 9 → 5
 ├── pinSpacing: number       # 1.0 → 2.0
-├── pinRadius: number        # 0.15 (unchanged)
+├── pinRadius: number        # 0.12 (reduced 60% from 0.30)
 ├── puckRadius: number       # 0.25 → 0.5
 ├── bucketScores: number[]   # [100,500,1000,5000,10000,5000,1000,500,100] → [100,1000,10000,1000,100]
 ├── boardWidth: number       # 10.0 (unchanged)

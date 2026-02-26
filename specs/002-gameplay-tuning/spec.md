@@ -119,10 +119,13 @@ When the puck collides with a pin, the visual particle burst is smaller and less
 - **FR-004**: The system MUST allow a short grace period (approximately 0.5 seconds) before declaring out-of-bounds, to account for brief exits near edges.
 - **FR-005**: The board MUST display 6 rows of pins (reduced from 12).
 - **FR-005a**: Pin spacing MUST be increased from 1.0 to approximately 2.0 world units to maintain ~80% board-width coverage with the reduced pin count.
+- **FR-005b**: The default number of pins per row MUST be 6 (even rows display 6 pins, odd rows display 5 in the staggered pattern).
 - **FR-006**: Pins MUST be arranged in a staggered (offset) pattern where odd-numbered rows are horizontally shifted relative to even-numbered rows, ensuring no pin is directly below another.
 - **FR-007**: The board MUST display 5 scoring buckets (reduced from 9).
 - **FR-008**: Bucket scores MUST be symmetric with the highest value in the center (e.g., [100, 1000, 10000, 1000, 100]).
 - **FR-009**: The puck size MUST be proportionally adjusted so the puck-to-pin-spacing ratio remains similar to the original layout (pin spacing increases from 1.0 to ~2.0, so puck radius scales accordingly from 0.25 to ~0.5).
+- **FR-009a**: The pin radius MUST be reduced by 60% (from 0.30 to 0.12 world units) to create more open space between pins, giving pucks a less obstructed path and a more dynamic, varied fall trajectory.
+- **FR-009b**: Puck-to-puck collision restitution MUST be 50% higher than the effective pin-to-puck restitution. The system MUST override the contact restitution in a pre-solve handler when both colliding bodies are pucks.
 - **FR-010**: Pin-hit collision particle effects MUST be reduced from 6 particles to 2–3 particles per collision.
 - **FR-011**: Pin-hit collision particle effects MUST still produce a visible indicator (not completely removed).
 - **FR-012**: The shove zone limit MUST be recalculated proportionally for the new 6-row pin layout.
@@ -131,7 +134,7 @@ When the puck collides with a pin, the visual particle burst is smaller and less
 
 - **Board Layout**: Defines pin rows, bucket count, pin spacing, pin radius, puck radius, bucket scores, and board dimensions. This feature modifies the default values for pin rows (12→6), bucket count (9→5), bucket scores, and puck radius.
 - **Puck**: The player's game piece dropped through the pin field. Its radius is being adjusted to match the new board density.
-- **Pin**: A fixed obstacle on the board. Pin arrangement (staggered pattern) is preserved but row count is halved.
+- **Pin**: A fixed obstacle on the board. Pin arrangement (staggered pattern) is preserved but row count is halved. Pin radius is reduced by 60% (0.30→0.12) for a more open board.
 - **Bucket**: A scoring zone at the bottom of the board. Count is reduced from 9 to 5 with redistributed scores.
 - **Particle Effect**: A visual burst on collision. The pin-hit effect is reduced in intensity.
 - **Out-of-Bounds Zone**: The area outside the board's playable boundaries. A new detection mechanism triggers round termination when the puck enters this zone.
